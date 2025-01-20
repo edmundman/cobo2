@@ -1,0 +1,8 @@
+streamlit
+python-pptx
+anthropic
+pymupdf
+matplotlib
+seaborn
+numpy
+python-dotenv

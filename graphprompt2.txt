@@ -1,0 +1,155 @@
+
+You are tasked with extracting key information from a scientific paper PDF and generating a JSON structure for a slideshow presentation. The goal is to create a concise summary that can be easily converted into slides, with the level of simplification adjustable based on the user's preference.
+
+First, you will be provided with the content of the PDF:
+
+You will also receive a simplification level, which is a number between 1 and 10:
+
+<simplification_level>
+{{SIMPLIFICATION_LEVEL}}
+</simplification_level>
+
+The simplification level determines how much you should condense and simplify the information.
+A level of 1 means minimal simplification (most detailed),
+while a level of 10 means maximum simplification (very concise).
+
+Your task is to:
+1. Read through the PDF content.
+2. Extract relevant information for each field in the JSON structure.
+3. Summarize the information based on the given simplification level.
+
+The JSON structure **must** contain the following fields:
+
+```json
+{
+  "Title": "",
+  "AUTHOR_NAMES": [],
+  "PAPER_PMID": "",
+  "PAPER_DOI": "",
+  "Background_Info": "",
+  "Patient_Quote": "",
+  "Patient_Name": "",
+  "Date":"",
+  "AIMS": [],
+  "Methods": "",
+  "Findings": [],
+  "Conclusion": "",
+  "CHARTS": []
+}
+```
+
+### The Required Fields
+- **Title**: Paper title
+- **AUTHOR_NAMES**: List of author names
+- **PAPER_PMID**: The paper’s PMID
+- **PAPER_DOI**: The paper’s DOI
+- **Background_Info**: A condensed background
+- **Patient_Quote**: A short patient quote
+- **Patient_Name**: Name or identifier for the patient
+- **Date**: The date / date range of the study 
+- **AIMS**: List of aims or research questions
+- **Methods**: Short description of methods
+- **Findings**: List of main findings
+- **Conclusion**: Main conclusion
+- **CHARTS**: **Optional** list of chart objects. (See instructions below.)
+
+### The CHARTS Array (Optional)
+We may want to display certain data visually.Ideally only use each chart type once. For each chart you want to generate, add an object to the `"CHARTS"` array with the following structure:
+
+```json
+{
+  "chart_type": "donut" | "comparison_bars" | "trend_line",
+  "chart_title": "",
+  "data": {}
+}
+```
+
+**Ensure that the `"data"` field for each `chart_type` is structured as follows to align with the PowerPoint generation requirements:**
+
+1. **Donut Chart**:
+    ```json
+    {
+      "chart_type": "donut",
+      "chart_title": "Prevalence of Serum AFP in Patients with Chronic Hepatitis C",
+      "data": [
+        {"category": "Positive", "value": 23},
+        {"category": "Negative", "value": 77}
+      ]
+    }
+    ```
+
+2. **Comparison Bars**:
+    ```json
+    {
+      "chart_type": "comparison_bars",
+      "chart_title": "Response Rates by Treatment Group",
+      "data": {
+        "labels": ["Group A", "Group B", "Group C", "Group D"],
+        "values": [75, 45, 32, 21]
+      }
+    }
+    ```
+
+3. **Trend Line**:
+    ```json
+    {
+      "chart_type": "trend_line",
+      "chart_title": "Patient Enrollment Over Time",
+      "data": {
+        "dates": ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul"],
+        "values": [10, 15, 25, 20, 30, 35, 28]
+      }
+    }
+    ```
+
+> **Note**: 
+> - For **Donut Charts**, provide a list of objects with `"category"` and `"value"` to represent different segments.
+> - For **Comparison Bars** and **Trend Lines**, ensure that `"labels"` and `"dates"` respectively correspond to `"values"` to maintain data integrity.
+> - If **no** charts are relevant, return an empty `"CHARTS": []`.
+
+You **must** place your JSON output inside `<json_output>` tags. Before providing the JSON, briefly explain your thought process and any challenges you encountered in a `<scratchpad>` section.
+
+**Example Output** (for a mid-level simplification, say level 5) could look like:
+
+```json
+{
+  "Title": "Effects of Exercise on Cardiovascular Health",
+  "AUTHOR_NAMES": ["J. Smith", "A. Johnson", "M. Lee"],
+  "PAPER_PMID": "12345678",
+  "PAPER_DOI": "10.1234/abcd.5678",
+  "Background_Info": "Cardiovascular disease is a leading cause of death...",
+  "Patient_Quote": "I feel healthier and my heart condition improved.",
+  "Patient_Name": "John Doe",
+  "Date": "21st Feb 2020—5th Mar 2021"
+  "AIMS": [
+    "Identify the effects of exercise on cardiovascular health",
+    "Determine the optimal exercise duration"
+  ],
+  "Methods": "Randomized controlled trial with 500 participants...",
+  "Findings": [
+    "High-intensity exercise had the most benefit",
+    "At least 30 minutes/day is recommended",
+    "Mixed routines outperformed single-type routines"
+  ],
+  "Conclusion": "Regular exercise is key for improving cardiovascular outcomes.",
+  "CHARTS": [
+    {
+      "chart_type": "donut",
+      "chart_title": "Proportion of High-Intensity Exercisers",
+      "data": [
+        {"category": "High-Intensity", "value": 40},
+        {"category": "Low-Intensity", "value": 60}
+      ]
+    },
+    {
+      "chart_type": "trend_line",
+      "chart_title": "Enrollment Over Time",
+      "data": {
+        "dates": ["Week 1", "Week 2", "Week 3", "Week 4", "Week 5", "Week 6", "Week 7"],
+        "values": [50, 80, 120, 200, 300, 450, 500]
+      }
+    }
+  ]
+}
+```
+
