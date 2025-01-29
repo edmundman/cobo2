@@ -681,40 +681,40 @@ def main():
                 st.error(f"Error in chart previews: {e}")
 
         # Generate PPT
-        if st.button("Generate PowerPoint"):
-            # Create progress indicators
-            ppt_progress_bar = st.progress(0)
-            ppt_status_text = st.empty()
-            ppt_status_text.text("Generating PowerPoint...")
+    if st.button("Generate PowerPoint"):
+        # Create progress indicators
+        ppt_progress_bar = st.progress(0)
+        ppt_status_text = st.empty()
+        ppt_status_text.text("Generating PowerPoint...")
 
-            try:
-                # Generate a fresh Presentation each time
-                fresh_prs = load_ppt_template(TEMPLATE_PATH)
-                new_ppt_stream = populate_ppt_template(
-                    st.session_state.json_data,
-                    fresh_prs,
-                    st.session_state.uploaded_images
-                )
-                # Store in session_state
-                st.session_state.ppt_file = new_ppt_stream
-                
-                ppt_progress_bar.progress(100)
-                ppt_status_text.text("PowerPoint Generated!")
-                st.success("PowerPoint generated successfully!")
-            except Exception as e:
-                st.error(f"Error generating PowerPoint: {str(e)}")
-                ppt_status_text.text("Error generating PowerPoint")
-                return
-
-        # If PPT is generated, show download button
-        if st.session_state.ppt_file:
-            st.download_button(
-                label="Download PowerPoint",
-                data=st.session_state.ppt_file,
-                file_name=f"presentation_{uuid.uuid4()}.pptx",  # Unique filename
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                key=f"download_ppt_{uuid.uuid4()}"             # Optional unique key
+        try:
+            # Generate a fresh Presentation each time
+            fresh_prs = load_ppt_template(TEMPLATE_PATH)
+            new_ppt_stream = populate_ppt_template(
+                st.session_state.json_data,
+                fresh_prs,
+                st.session_state.uploaded_images
             )
+            # Store in session_state
+            st.session_state.ppt_file = new_ppt_stream
+            
+            ppt_progress_bar.progress(100)
+            ppt_status_text.text("PowerPoint Generated!")
+            st.success("PowerPoint generated successfully!")
+        except Exception as e:
+            st.error(f"Error generating PowerPoint: {str(e)}")
+            ppt_status_text.text("Error generating PowerPoint")
+            return
+
+    # If PPT is generated, show download button
+    if st.session_state.ppt_file:
+        st.download_button(
+            label="Download PowerPoint",
+            data=st.session_state.ppt_file,
+            file_name=f"presentation_{uuid.uuid4()}.pptx",  # Unique filename
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            key=f"download_ppt_{uuid.uuid4()}"             # Unique key
+        )
 
 def edit_json_section(json_data, section_name):
     """Let user edit each JSON section in Streamlit."""
