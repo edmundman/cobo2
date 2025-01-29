@@ -325,7 +325,7 @@ def main():
 
     # Step D: call Claude to get slides JSON
     if uploaded_pdf and st.button("Let's Peel!"):
-        with st.spinner("Calling Claude to generate slides..."):
+        with st.spinner("Loading..."):
             pdf_bytes = uploaded_pdf.read()
             result = call_claude_for_slides(pdf_bytes, st.session_state.layout_info, simplification_level)
             if result:
