@@ -14,7 +14,7 @@ from dotenv import load_dotenv
 import os
 import re
 import matplotlib.pyplot as plt
-
+import uuid
 # -------------------- BEGIN: SETUP --------------------
 load_dotenv()
 st.set_page_config(page_title="Let's Create Your Presentation", layout="wide")
@@ -688,11 +688,16 @@ def main():
             ppt_status_text.text("Generating PowerPoint...")
 
             try:
-                st.session_state.ppt_file = populate_ppt_template(
+                # Generate a fresh Presentation each time
+                fresh_prs = load_ppt_template(TEMPLATE_PATH)
+                new_ppt_stream = populate_ppt_template(
                     st.session_state.json_data,
-                    load_ppt_template(TEMPLATE_PATH),
+                    fresh_prs,
                     st.session_state.uploaded_images
                 )
+                # Store in session_state
+                st.session_state.ppt_file = new_ppt_stream
+                
                 ppt_progress_bar.progress(100)
                 ppt_status_text.text("PowerPoint Generated!")
                 st.success("PowerPoint generated successfully!")
@@ -701,14 +706,15 @@ def main():
                 ppt_status_text.text("Error generating PowerPoint")
                 return
 
-    # If PPT is generated, show download button
-    if st.session_state.ppt_file:
-        st.download_button(
-            label="Download PowerPoint",
-            data=st.session_state.ppt_file,
-            file_name="presentation.pptx",
-            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-        )
+        # If PPT is generated, show download button
+        if st.session_state.ppt_file:
+            st.download_button(
+                label="Download PowerPoint",
+                data=st.session_state.ppt_file,
+                file_name=f"presentation_{uuid.uuid4()}.pptx",  # Unique filename
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                key=f"download_ppt_{uuid.uuid4()}"             # Optional unique key
+            )
 
 def edit_json_section(json_data, section_name):
     """Let user edit each JSON section in Streamlit."""
