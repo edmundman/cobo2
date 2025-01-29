@@ -300,7 +300,7 @@ def _add_trend_line_chart(slide, left, top, width, height, data_obj):
 
 # ------------- 6) MAIN STREAMLIT APP -------------
 def main():
-    st.title("Let's Create Your Presentation")
+    st.title("Let's Create and Edit Your Presentation")
 
     # Step A: Load layout info once
     if "layout_info" not in st.session_state:
@@ -324,36 +324,165 @@ def main():
             uploaded_images[img.name] = img.read()
 
     # Step D: call Claude to get slides JSON
-    if uploaded_pdf and st.button("Lets Peel!"):
-        pdf_bytes = uploaded_pdf.read()
-        result = call_claude_for_slides(pdf_bytes, st.session_state.layout_info, simplification_level)
-        if result:
-            st.session_state.slides_json = result
-            st.success("Received JSON from Claude!")
-        else:
-            st.error("No valid JSON returned")
+    if uploaded_pdf and st.button("Let's Peel!"):
+        with st.spinner("Calling Claude to generate slides..."):
+            pdf_bytes = uploaded_pdf.read()
+            result = call_claude_for_slides(pdf_bytes, st.session_state.layout_info, simplification_level)
+            if result:
+                st.session_state.slides_json = result
+                st.success("Received JSON from Claude!")
+            else:
+                st.error("No valid JSON returned")
 
-    # If we have slides_json, show it
+    # If we have slides_json, show editing interface
     if "slides_json" in st.session_state and st.session_state.slides_json:
-        st.json(st.session_state.slides_json)
+        st.header("Edit Generated Slides")
+
+        slides = st.session_state.slides_json.get("slides", [])
+
+        # **New Section**: Slide Selection as Bullet-Style Radio Buttons
+        st.subheader("Select a Slide to Edit")
+        # Generate options with only slide numbers
+        slide_options = [f"Slide {i+1}" for i in range(len(slides))]
+        
+        # Use radio buttons for slide selection
+        selected_slide_label = st.radio(
+            "Choose a slide:",
+            options=slide_options,
+            index=0,
+            key="selected_slide_radio"
+        )
+        
+        # Determine the selected slide index based on label
+        selected_slide_index = slide_options.index(selected_slide_label)
+
+        # **Modified Line**: Display only the slide number in the editing header
+        st.markdown(f"### Editing Slide {selected_slide_index + 1}")
+
+        selected_slide = slides[selected_slide_index]
+        placeholders = selected_slide.get("placeholders", {})
+
+        # Iterate through placeholders and provide editing options
+        for ph_idx, content in placeholders.items():
+            layout_info = st.session_state.layout_info
+            # Find placeholder name and type
+            placeholder_info = None
+            for layout in layout_info:
+                if layout['layout_name'] == selected_slide.get("layout_name", ""):
+                    for ph in layout['placeholders']:
+                        if str(ph['placeholder_idx']) == str(ph_idx):
+                            placeholder_info = ph
+                            break
+            if not placeholder_info:
+                st.warning(f"Placeholder idx {ph_idx} not found in layout info.")
+                continue
+
+            ph_name = placeholder_info['placeholder_name']
+            ph_type = placeholder_info['shape_type']
+
+            # Use 'Title' if the placeholder name contains 'title'
+            display_name = "Title" if "title" in ph_name.lower() else ph_name
+
+            # **Modified Line**: Display only the placeholder name without slide number or placeholder type
+            st.markdown(f"**{display_name}**")
+            # Removed: f"Slide {selected_slide_index + 1} - {display_name} ({ph_type})"
+
+            # Depending on content type, provide appropriate editing widgets
+            if isinstance(content, dict):
+                if "chart_type" in content:
+                    st.info("Chart placeholders are not editable via this interface.")
+                    continue
+                if "image_key" in content:
+                    img_key = content["image_key"]
+                    if img_key in uploaded_images:
+                        st.image(uploaded_images.get(img_key, b''), caption=img_key, use_column_width=True)
+                        st.info("Image placeholders are not editable via this interface.")
+                    continue
+
+            # Handle text and bullets
+            if isinstance(content, dict):
+                text = content.get("text", "")
+                bullets = content.get("bullets", [])
+            else:
+                text = content
+                bullets = []
+
+            # Editable text
+            edited_text = st.text_area(
+                f"Edit Text for {display_name}",
+                value=text,
+                key=f"text_{selected_slide_index}_{ph_idx}",
+                height=100
+            )
+
+            # Editable bullets
+            edited_bullets = []
+            if bullets:
+                bullets_text = "\n".join(bullets)
+                edited_bullets_text = st.text_area(
+                    f"Edit Bullets for {display_name} (one per line)",
+                    value=bullets_text,
+                    key=f"bullets_{selected_slide_index}_{ph_idx}"
+                )
+                edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
+            else:
+                add_bullets = st.checkbox(
+                    f"Add Bullets to {display_name}",
+                    key=f"add_bullets_{selected_slide_index}_{ph_idx}"
+                )
+                if add_bullets:
+                    edited_bullets_text = st.text_area(
+                        f"Add Bullets for {display_name} (one per line)",
+                        key=f"new_bullets_{selected_slide_index}_{ph_idx}"
+                    )
+                    edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
+
+            # Update the slides_json based on edits
+            if edited_bullets:
+                if isinstance(content, dict):
+                    slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
+                    slides[selected_slide_index]['placeholders'][ph_idx]['bullets'] = edited_bullets
+                else:
+                    # If original content was plain text
+                    slides[selected_slide_index]['placeholders'][ph_idx] = {
+                        "text": edited_text,
+                        "bullets": edited_bullets
+                    }
+            else:
+                if isinstance(content, dict):
+                    slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
+                else:
+                    slides[selected_slide_index]['placeholders'][ph_idx] = edited_text
+
+        # Update the session_state with edited slides
+        st.session_state.slides_json['slides'] = slides
+
+        st.success("Slides JSON updated with your edits.")
+
+        # Optionally, display the updated JSON
+        with st.expander("View Updated JSON"):
+            st.json(st.session_state.slides_json)
 
         # Generate PPTX
+        st.header("Generate Your Edited Presentation")
         if st.button("Generate PPT"):
-            # 1) Create a new Presentation from the template
-            prs = Presentation(EXETER_TEMPLATE_PATH)
-            # 2) Fill the slides from JSON
-            prs = create_slides_from_json(prs, st.session_state.slides_json, st.session_state.layout_info, uploaded_images)
-            # 3) Save to bytes
-            ppt_buffer = BytesIO()
-            prs.save(ppt_buffer)
-            ppt_buffer.seek(0)
-            # 4) Download button
-            st.download_button(
-                "Download PPTX",
-                data=ppt_buffer.getvalue(),
-                file_name="my_presentation.pptx",
-                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
-            )
+            with st.spinner("Generating PowerPoint presentation..."):
+                # 1) Create a new Presentation from the template
+                prs = Presentation(EXETER_TEMPLATE_PATH)
+                # 2) Fill the slides from JSON
+                prs = create_slides_from_json(prs, st.session_state.slides_json, st.session_state.layout_info, uploaded_images)
+                # 3) Save to bytes
+                ppt_buffer = BytesIO()
+                prs.save(ppt_buffer)
+                ppt_buffer.seek(0)
+                # 4) Download button
+                st.download_button(
+                    "Download PPTX",
+                    data=ppt_buffer.getvalue(),
+                    file_name="my_presentation.pptx",
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                )
+                st.success("PPTX generated and ready for download!")
 
 if __name__ == "__main__":
     main()
