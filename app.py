@@ -325,7 +325,7 @@ def main():
 
     # Step D: call Claude to get slides JSON
     if uploaded_pdf and st.button("Let's Peel!"):
-        with st.spinner("Loading..."):
+        with st.spinner("Generating slides..."):
             pdf_bytes = uploaded_pdf.read()
             result = call_claude_for_slides(pdf_bytes, st.session_state.layout_info, simplification_level)
             if result:
@@ -425,18 +425,6 @@ def main():
                     key=f"bullets_{selected_slide_index}_{ph_idx}"
                 )
                 edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
-            else:
-                add_bullets = st.checkbox(
-                    f"Add Bullets to {display_name}",
-                    key=f"add_bullets_{selected_slide_index}_{ph_idx}"
-                )
-                if add_bullets:
-                    edited_bullets_text = st.text_area(
-                        f"Add Bullets for {display_name} (one per line)",
-                        key=f"new_bullets_{selected_slide_index}_{ph_idx}"
-                    )
-                    edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
-
             # Update the slides_json based on edits
             if edited_bullets:
                 if isinstance(content, dict):
