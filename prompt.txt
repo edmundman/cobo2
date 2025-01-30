@@ -128,6 +128,7 @@ You will receive the PDF as a base64-encoded "document." Please:
 3. For each slide, specify a `"layout_name"` and a `"placeholders"` object.  
    - Within `"placeholders"`, indicate which `"placeholder_idx"` to fill (matching the layout info above).
    - Provide text (e.g., `"text": "..."`) or bullet points (e.g., `"bullets": ["Point 1", "Point 2"]`) for each placeholder if needed.
+   - Try not to have too many bullet points, only a few bullet point slides per thing, invlude graphs where you see fit
    - If you want to include a chart, you can specify something like:
      ```
      {
