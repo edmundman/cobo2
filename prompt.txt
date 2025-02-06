@@ -13,17 +13,46 @@ You will receive the PDF as a base64-encoded document. Please:
    - Provide text (via `"text": "..."`) or bullet points (via `"bullets": ["Point 1", "Point 2"]`) for each placeholder, unless you prefer paragraphs of text.
    - Each deck should only have one or two bullet point slides do not go overboard
    - Each deck should have ATLEAST one graph. 
-   - If you want to include a chart, use:
+   - 4. If you want to include **charts**, you may use one of the following chart types:
+   - **"donut"**  
      ```json
      {
        "placeholder_idx": 1,
        "chart_type": "donut",
        "chart_data": [
-         {"category": "A", "value": 40},
-         {"category": "B", "value": 60}
+         { "category": "Female", "value": 60 },
+         { "category": "Male", "value": 40 }
        ]
      }
      ```
+     Where each entry in `"chart_data"` must contain `"category"` and `"value"`.
+   
+   - **"comparison_bars"**  
+     ```json
+     {
+       "placeholder_idx": 1,
+       "chart_type": "comparison_bars",
+       "chart_data": {
+         "labels": ["Group A", "Group B", "Group C"],
+         "values": [75, 45, 62]
+       }
+     }
+     ```
+     Where `"labels"` is a list of categories, and `"values"` is a corresponding list of numeric values.
+   
+   - **"trend_line"**  
+     ```json
+     {
+       "placeholder_idx": 1,
+       "chart_type": "trend_line",
+       "chart_data": {
+         "dates": ["Jan", "Feb", "Mar", "Apr"],
+         "values": [10, 20, 15, 25]
+       }
+     }
+     ```
+     Where `"dates"` is a list of labels (often time-based), and `"values"` is a corresponding list of numeric values.
+
    - If you want to include an image, please use `"image_key": "<filename>"`, where `<filename>` is one of the available images listed below.
 
 We also have these images available, you must use all of them do not skip any please:
