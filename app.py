@@ -314,6 +314,14 @@ def clear_pdf():
     st.session_state.pop("uploaded_pdf", None)
     st.session_state.pop("slides_json", None)
 
+def slider_format_func(x):
+    if x == 1:
+        return "Academic"
+    elif x == 10:
+        return "Patient"
+    else:
+        return str(x)
+
 def main():
     st.title("Let's Create and Edit Your Presentation")
 
@@ -326,18 +334,17 @@ def main():
     simplification_level = st.slider(
         "Choose presentation style",
         1, 10, 5,
-        key="simplification_level",
-        format_func=lambda x: "Academic" if x == 1 else ("Patient" if x == 10 else str(x))
+        key="presentation_style",
+        format_func=slider_format_func
     )
 
-    # Check if the slider value has changed compared to the previously stored value;
-    # if so, clear the uploaded PDF and slides JSON.
-    if "prev_simplification_level" in st.session_state:
-        if st.session_state.prev_simplification_level != simplification_level:
+    # If the presentation style has changed, clear the uploaded PDF and slides JSON.
+    if "prev_presentation_style" in st.session_state:
+        if st.session_state.prev_presentation_style != simplification_level:
             clear_pdf()
-    st.session_state.prev_simplification_level = simplification_level
+    st.session_state.prev_presentation_style = simplification_level
 
-    # Step C: User uploads PDF (note the key so it can be cleared when the slider changes)
+    # Step C: User uploads PDF (with key so it can be cleared on style change)
     uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"], key="uploaded_pdf")
 
     # Optional: user uploads images
@@ -362,13 +369,13 @@ def main():
             else:
                 st.error("No valid JSON returned")
 
-    # If we have slides_json, show editing interface
+    # If we have slides_json, show the editing interface
     if "slides_json" in st.session_state and st.session_state.slides_json:
         st.header("Edit Generated Slides")
 
         slides = st.session_state.slides_json.get("slides", [])
 
-        # Slide Selection as Bullet-Style Radio Buttons
+        # Slide Selection as bullet-style radio buttons
         st.subheader("Select a Slide to Edit")
         slide_options = [f"Slide {i+1}" for i in range(len(slides))]
         
@@ -407,7 +414,7 @@ def main():
 
             st.markdown(f"**{display_name}**")
 
-            # Depending on content type, provide appropriate editing widgets
+            # Provide appropriate editing widgets based on content type
             if isinstance(content, dict):
                 if "chart_type" in content:
                     st.info("Chart placeholders are not editable via this interface.")
@@ -462,7 +469,7 @@ def main():
                 else:
                     slides[selected_slide_index]['placeholders'][ph_idx] = edited_text
 
-        # Update the session_state with edited slides
+        # Update session_state with edited slides
         st.session_state.slides_json['slides'] = slides
 
         st.success("Slides JSON updated with your edits.")
