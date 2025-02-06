@@ -307,20 +307,15 @@ def main():
         st.session_state.layout_info = get_slide_layouts(EXETER_TEMPLATE_PATH)
 
     # Step B: user picks simplification level
-    def format_level(level):
-        if level == 1:
-            return "acaemdic"
-        elif level == 10:
-            return "patint"
-        else:
-            return str(level)
+    st.markdown("#### Choose Simplification Level")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col1:
+        st.markdown("**Academic**")
+    with col2:
+        simplification_level = st.slider("", 1, 10, 5)
+    with col3:
+        st.markdown("**Patient**")
 
-    simplification_level = st.select_slider(
-        "Choose simplification level",
-        options=list(range(1, 11)),
-        value=5,
-        format_func=format_level
-    )
 
 
     # Step C: user uploads PDF
