@@ -33,7 +33,7 @@ PROMPT_FILE = "prompt.txt"  # <-- Path to your .txt file with placeholders
 
 # ------------- 2) UTILITY: Load the Prompt Template -------------
 def load_prompt_text(prompt_path):
-    """Load the entire prompt from a text file (with placeholders like {{SIMPLIFICATION_LEVEL}})."""
+    """Load the entire prompt from a text file (with placeholders like {{SIMPLIFICATION_LEVEL}}, etc.)."""
     with open(prompt_path, "r", encoding="utf-8") as f:
         return f.read()
 
@@ -60,37 +60,41 @@ def get_slide_layouts(pptx_path):
     return layout_info
 
 # ------------- 3) BUILD PROMPT -------------
-def build_flexible_prompt(layout_info, simplification_level):
+def build_flexible_prompt(layout_info, simplification_level, image_filenames):
     """
-    Reads the .txt prompt and replaces {{SIMPLIFICATION_LEVEL}} and {{LAYOUT_INFO}}.
+    Reads the .txt prompt and replaces {{SIMPLIFICATION_LEVEL}}, {{LAYOUT_INFO_JSON}}, and {{AVAILABLE_IMAGES}}.
     """
-    # Load the text from file
     prompt_template = load_prompt_text(PROMPT_FILE)
 
     # Convert layout info to JSON
     layout_info_json = json.dumps(layout_info, indent=2)
 
-    # Replace placeholders
+    # Convert image filenames to a JSON array (or a comma-separated list)
+    # We'll do a simple JSON array:
+    image_filenames_json = json.dumps(image_filenames, indent=2)
+
+    # Replace placeholders in the prompt
     prompt_filled = (
         prompt_template
         .replace("{{SIMPLIFICATION_LEVEL}}", str(simplification_level))
         .replace("{{LAYOUT_INFO_JSON}}", layout_info_json)
+        .replace("{{AVAILABLE_IMAGES}}", image_filenames_json)
     )
-
+    print(prompt_filled)
     return prompt_filled
 
 # ------------- 4) CALL CLAUDE -------------
-def call_claude_for_slides(pdf_bytes, layout_info, simplification_level):
+def call_claude_for_slides(pdf_bytes, layout_info, simplification_level, image_filenames):
     """
-    Calls Claude with the PDF and layout information to get slides JSON.
+    Calls Claude with the PDF, layout info, and available images to get slides JSON.
     """
-    # 1) Build your prompt string
-    final_prompt = build_flexible_prompt(layout_info, simplification_level)
+    # Build your prompt string
+    final_prompt = build_flexible_prompt(layout_info, simplification_level, image_filenames)
 
-    # 2) Encode the PDF to base64
+    # Encode the PDF to base64
     pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
 
-    # 3) Build the messages array
+    # Build the messages array
     messages = [
         {
             "role": "user",
@@ -111,7 +115,7 @@ def call_claude_for_slides(pdf_bytes, layout_info, simplification_level):
         }
     ]
 
-    # 4) Call Claude
+    # Call Claude
     response = client.messages.create(
         model=MODEL_NAME,
         messages=messages,
@@ -120,7 +124,7 @@ def call_claude_for_slides(pdf_bytes, layout_info, simplification_level):
 
     assistant_reply = response.content[0].text
 
-    # 5) Extract JSON from <json_output> ... </json_output>
+    # Attempt to extract JSON from <json_output> ... </json_output>
     json_pattern = r"<json_output>\s*(\{.*?\})\s*</json_output>"
     match = re.search(json_pattern, assistant_reply, re.DOTALL)
     if match:
@@ -155,7 +159,7 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
       {
         "layout_name": "<layout_name>",
         "placeholders": {
-          "<placeholder_idx>": "Content" or { "image_key": "key" } or { "chart_type": "...", "chart_data": ... },
+          "<placeholder_idx>": "Content" or { "image_key": "filename" } or { "chart_type": "...", "chart_data": ... },
           ...
         }
       },
@@ -164,7 +168,11 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
     slide_master = prs.slide_masters[0]
     
     # Create a mapping from layout names to layout objects
-    layout_name_map = {layout['layout_name']: layout_obj for layout, layout_obj in zip(layout_info, slide_master.slide_layouts)}
+    # (Zipping layout_info with slide_master.slide_layouts in the same order)
+    layout_name_map = {
+        info["layout_name"]: layout_obj
+        for info, layout_obj in zip(layout_info, slide_master.slide_layouts)
+    }
 
     for slide_def in slides_json.get("slides", []):
         # 1) Pick the layout by name
@@ -194,15 +202,15 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                 st.warning(f"Placeholder with idx '{ph_idx}' not found in layout '{layout_name}'.")
                 continue
 
-            # (A) Handle different content types
+            # (A) Handle dictionary-based content like images or charts
             if isinstance(content, dict):
+                # Chart?
                 if "chart_type" in content and "chart_data" in content:
                     chart_type = content["chart_type"]
                     chart_data = content["chart_data"]
-                    # Remove placeholder
+                    # Remove placeholder shape
                     sp = shape._element
                     sp.getparent().remove(sp)
-
                     left, top, width, height = shape.left, shape.top, shape.width, shape.height
                     if chart_type == "donut":
                         _add_donut_chart(slide, left, top, width, height, chart_data)
@@ -212,30 +220,32 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         _add_trend_line_chart(slide, left, top, width, height, chart_data)
                     continue
 
+                # Image?
                 if "image_key" in content and uploaded_images:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
+                        # Remove placeholder shape
                         sp = shape._element
                         sp.getparent().remove(sp)
                         left, top, width, height = shape.left, shape.top, shape.width, shape.height
                         slide.shapes.add_picture(BytesIO(uploaded_images[img_key]), left, top, width, height)
                     continue
 
-            # (B) If there's text/bullets
-            if "text" in content:
-                tf = shape.text_frame
-                tf.text = content["text"]
+                # Possibly text + bullets
+                text_val = content.get("text", "")
+                bullet_vals = content.get("bullets", [])
+                if text_val or bullet_vals:
+                    tf = shape.text_frame
+                    tf.text = text_val
+                    for b_item in bullet_vals:
+                        p = tf.add_paragraph()
+                        p.text = b_item
+                        p.level = 0
 
-            if "bullets" in content:
+            # (B) If it's a simple string, treat as text
+            elif isinstance(content, str):
                 tf = shape.text_frame
-                # If text is already set, add bullets below
-                if "text" in content:
-                    p = tf.add_paragraph()
-                    p.text = ""
-                for bullet_item in content["bullets"]:
-                    p = tf.add_paragraph()
-                    p.text = bullet_item
-                    p.level = 0
+                tf.text = content
 
     return prs
 
@@ -316,8 +326,6 @@ def main():
     with col3:
         st.markdown("**Patient**")
 
-
-
     # Step C: user uploads PDF
     uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
 
@@ -328,15 +336,23 @@ def main():
         accept_multiple_files=True
     )
     uploaded_images = {}
+    image_filenames = []
     if uploaded_images_files:
         for img in uploaded_images_files:
+            # We'll store the file by its actual name
             uploaded_images[img.name] = img.read()
+            image_filenames.append(img.name)
 
     # Step D: call Claude to get slides JSON
     if uploaded_pdf and st.button("Let's Peel!"):
         with st.spinner("Generating slides..."):
             pdf_bytes = uploaded_pdf.read()
-            result = call_claude_for_slides(pdf_bytes, st.session_state.layout_info, simplification_level)
+            result = call_claude_for_slides(
+                pdf_bytes,
+                st.session_state.layout_info,
+                simplification_level,
+                image_filenames  # pass the list of available image filenames
+            )
             if result:
                 st.session_state.slides_json = result
                 st.success("Received JSON from Claude!")
@@ -349,34 +365,26 @@ def main():
 
         slides = st.session_state.slides_json.get("slides", [])
 
-        # **New Section**: Slide Selection as Bullet-Style Radio Buttons
+        # Slide selection
         st.subheader("Select a Slide to Edit")
-        # Generate options with only slide numbers
         slide_options = [f"Slide {i+1}" for i in range(len(slides))]
-        
-        # Use radio buttons for slide selection
         selected_slide_label = st.radio(
             "Choose a slide:",
             options=slide_options,
             index=0,
             key="selected_slide_radio"
         )
-        
-        # Determine the selected slide index based on label
         selected_slide_index = slide_options.index(selected_slide_label)
 
-        # **Modified Line**: Display only the slide number in the editing header
         st.markdown(f"### Editing Slide {selected_slide_index + 1}")
 
         selected_slide = slides[selected_slide_index]
         placeholders = selected_slide.get("placeholders", {})
 
-        # Iterate through placeholders and provide editing options
         for ph_idx, content in placeholders.items():
-            layout_info = st.session_state.layout_info
-            # Find placeholder name and type
+            # Find placeholder name
             placeholder_info = None
-            for layout in layout_info:
+            for layout in st.session_state.layout_info:
                 if layout['layout_name'] == selected_slide.get("layout_name", ""):
                     for ph in layout['placeholders']:
                         if str(ph['placeholder_idx']) == str(ph_idx):
@@ -387,16 +395,11 @@ def main():
                 continue
 
             ph_name = placeholder_info['placeholder_name']
-            ph_type = placeholder_info['shape_type']
-
-            # Use 'Title' if the placeholder name contains 'title'
             display_name = "Title" if "title" in ph_name.lower() else ph_name
 
-            # **Modified Line**: Display only the placeholder name without slide number or placeholder type
             st.markdown(f"**{display_name}**")
-            # Removed: f"Slide {selected_slide_index + 1} - {display_name} ({ph_type})"
 
-            # Depending on content type, provide appropriate editing widgets
+            # Check if content is dict with chart/image
             if isinstance(content, dict):
                 if "chart_type" in content:
                     st.info("Chart placeholders are not editable via this interface.")
@@ -408,8 +411,7 @@ def main():
                         st.info("Image placeholders are not editable via this interface.")
                     continue
 
-            # Handle text and bullets
-            if isinstance(content, dict):
+                # Possibly text + bullets
                 text = content.get("text", "")
                 bullets = content.get("bullets", [])
             else:
@@ -434,29 +436,28 @@ def main():
                     key=f"bullets_{selected_slide_index}_{ph_idx}"
                 )
                 edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
-            # Update the slides_json based on edits
-            if edited_bullets:
+
+            # Update in session
+            if bullets or edited_bullets:
+                # If bullets exist
                 if isinstance(content, dict):
                     slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
                     slides[selected_slide_index]['placeholders'][ph_idx]['bullets'] = edited_bullets
                 else:
-                    # If original content was plain text
                     slides[selected_slide_index]['placeholders'][ph_idx] = {
                         "text": edited_text,
                         "bullets": edited_bullets
                     }
             else:
+                # No bullets
                 if isinstance(content, dict):
                     slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
                 else:
                     slides[selected_slide_index]['placeholders'][ph_idx] = edited_text
 
-        # Update the session_state with edited slides
         st.session_state.slides_json['slides'] = slides
-
         st.success("Slides JSON updated with your edits.")
 
-        # Optionally, display the updated JSON
         with st.expander("View Updated JSON"):
             st.json(st.session_state.slides_json)
 
@@ -464,15 +465,11 @@ def main():
         st.header("Generate Your Edited Presentation")
         if st.button("Generate PPT"):
             with st.spinner("Generating PowerPoint presentation..."):
-                # 1) Create a new Presentation from the template
                 prs = Presentation(EXETER_TEMPLATE_PATH)
-                # 2) Fill the slides from JSON
                 prs = create_slides_from_json(prs, st.session_state.slides_json, st.session_state.layout_info, uploaded_images)
-                # 3) Save to bytes
                 ppt_buffer = BytesIO()
                 prs.save(ppt_buffer)
                 ppt_buffer.seek(0)
-                # 4) Download button
                 st.download_button(
                     "Download PPTX",
                     data=ppt_buffer.getvalue(),
