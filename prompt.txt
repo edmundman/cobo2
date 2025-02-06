@@ -13,6 +13,7 @@ You will receive the PDF as a base64-encoded document. Please:
    - Provide text (via `"text": "..."`) or bullet points (via `"bullets": ["Point 1", "Point 2"]`) for each placeholder, unless you prefer paragraphs of text.
    - Each deck should only have one or two bullet point slides do not go overboard
    - Each deck should have ATLEAST one graph. 
+   - Their must be a semi-narative style introduction and conclusion slide with well written paragraphs ( not bullet points)
    - 4. If you want to include **charts**, you may use one of the following chart types:
    - **"donut"**  
      ```json
