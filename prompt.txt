@@ -1,136 +1,20 @@
-You are tasked with extracting key information from a scientific paper PDF and generating a JSON structure describing a PowerPoint presentation. The level of simplification is {{SIMPLIFICATION_LEVEL}} (1 = minimal simplification, 10 = maximal).
+You are tasked with extracting key information from a scientific paper PDF and generating a JSON structure describing a PowerPoint presentation. The level of simplification is {{SIMPLIFICATION_LEVEL}} (1 = minimal, 10 = maximal).
 
-Below is each slide layout in our PowerPoint template. Each layout has:
-- a "layout_name" you can reference (string),
-- a list of "placeholders" (with "placeholder_idx" and "placeholder_name") you can choose to fill.
+We have the following PowerPoint slide layouts available. Here is their JSON representation for your reference:
 
-Available slide layouts:
-- Layout name: Cover Slide_white_opt1
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Cover Slide_green_opt1
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Cover Slide_grey_opt1
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-- Layout name: Cover Slide_green_opt2
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Cover Slide_white_opt3
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 6 (idx: 10)
-- Layout name: 1_Cover Slide_green_opt3
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 6 (idx: 10)
-- Layout name: Cover Slide_white_opt4_2
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 8 (idx: 10)
-- Layout name: Cover Slide_green_opt4
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 8 (idx: 10)
-- Layout name: Cover Slide_white_opt5_1
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Picture Placeholder 12 (idx: 10)
-- Layout name: Cover Slide_green_opt5
-  * Placeholder: Picture Placeholder 12 (idx: 10)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-- Layout name: Cover Slide_white_opt6_3
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Picture Placeholder 12 (idx: 10)
-- Layout name: Cover Slide_green_opt6
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Picture Placeholder 12 (idx: 10)
-- Layout name: Divider Slide_white_opt1_2
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Picture Placeholder 12 (idx: 10)
-- Layout name: Divider Slide_green_opt1_3
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 12 (idx: 10)
-- Layout name: Divider Slide_white_opt2
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-- Layout name: Divider Slide_green_opt2
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-- Layout name: Divider Slide_white_opt3_2
-  * Placeholder: Picture Placeholder 8 (idx: 10)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-- Layout name: Divider Slide_green_opt3_1
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Subtitle 2 (idx: 1)
-  * Placeholder: Picture Placeholder 8 (idx: 10)
-- Layout name: Divider Slide_green_opt3
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Charts and Tables
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Content Placeholder 2 (idx: 1)
-- Layout name: 1_Custom Layout
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: 2_Custom Layout
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 12 (idx: 11)
-- Layout name: Text Only Slide_opt1
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Content Placeholder 2 (idx: 1)
-- Layout name: Text Only Slide_opt2
-  * Placeholder: Content Placeholder 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Text Only Slide_opt3
-  * Placeholder: Content Placeholder 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Text & Image Slide_opt1
-  * Placeholder: Content Placeholder 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 12 (idx: 11)
-- Layout name: Text & Image Slide_opt2
-  * Placeholder: Content Placeholder 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 12 (idx: 11)
-- Layout name: Image Only Slide
-  * Placeholder: Picture Placeholder 12 (idx: 11)
-- Layout name: Multiple Image Slide_opt1
-  * Placeholder: Picture Placeholder 12 (idx: 13)
-  * Placeholder: Picture Placeholder 12 (idx: 14)
-  * Placeholder: Picture Placeholder 12 (idx: 15)
-- Layout name: Multiple Image Slide_opt2
-  * Placeholder: Picture Placeholder 12 (idx: 13)
-  * Placeholder: Picture Placeholder 12 (idx: 14)
-  * Placeholder: Picture Placeholder 12 (idx: 15)
-- Layout name: Multiple Image Slide_opt3
-  * Placeholder: Title Placeholder 1 (idx: 0)
-  * Placeholder: Picture Placeholder 12 (idx: 13)
-  * Placeholder: Picture Placeholder 12 (idx: 14)
-  * Placeholder: Picture Placeholder 12 (idx: 15)
-- Layout name: Text & Image Slide_opt4
-  * Placeholder: Content Placeholder 2 (idx: 1)
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Closing Slide_opt3
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Closing Slide_opt2
-  * Placeholder: Title Placeholder 1 (idx: 0)
-- Layout name: Closing Slide_opt1
-  * Placeholder: Title Placeholder 1 (idx: 0)
+{{LAYOUT_INFO_JSON}}
 
-You will receive the PDF as a base64-encoded "document." Please:
+You will receive the PDF as a base64-encoded document. Please:
 
-1. Read the PDF and summarize the key information at the specified simplification level.
-2. Decide how many slides to create, and **which layout_name** to use for each slide.
-3. For each slide, specify a `"layout_name"` and a `"placeholders"` object.  
-   - Within `"placeholders"`, indicate which `"placeholder_idx"` to fill (matching the layout info above).
-   - Provide text (e.g., `"text": "..."`) or bullet points (e.g., `"bullets": ["Point 1", "Point 2"]`) for each placeholder if needed.
-   - Try not to have too many bullet points, only a few bullet point slides per thing, invlude graphs where you see fit
-   - If you want to include a chart, you can specify something like:
-     ```
+1. Read the PDF and summarise the key information at the specified simplification level.
+2. Decide how many slides to create, and which "layout_name" to use for each slide.
+3. For each slide, specify a "layout_name" and a "placeholders" object. In that object:
+   - You must indicate which "placeholder_idx" to fill (matching the layout info above).
+   - Provide text (via `"text": "..."`) or bullet points (via `"bullets": ["Point 1", "Point 2"]`) for each placeholder, unless you prefer paragraphs of text.
+   - Each deck should only have one or two bullet point slides do not go overboard
+   - Each deck should have ATLEAST one graph. 
+   - If you want to include a chart, use:
+     ```json
      {
        "placeholder_idx": 1,
        "chart_type": "donut",
@@ -140,46 +24,51 @@ You will receive the PDF as a base64-encoded "document." Please:
        ]
      }
      ```
-4. If you want images, you can reference something like `{"placeholder_idx": 10, "image_key": "myImage1"}`. Then our code will place the image in that placeholder.
-5. **Return valid JSON** in a top-level object:
-   ```json
-   {
-     "slides": [ ... ]
-   }
+   - If you want to include an image, please use `"image_key": "<filename>"`, where `<filename>` is one of the available images listed below.
 
-where each item in "slides" has "layout_name" and a "placeholders" object as described.
-Format the Output Carefully
+We also have these images available, you must use all of them do not skip any please:
+{{AVAILABLE_IMAGES}}
 
-    Begin with a <scratchpad> block to show your thought process.
+To include an image on a slide, add something like:
 
-    Then provide <json_output> containing only valid JSON.
+"placeholders": {
+  "10": { "image_key": "your_image_filename.png" }
+}
+```
+(Make sure "placeholder_idx" matches an actual image placeholder index from the chosen layout.)
 
-    Example:
+Return **valid JSON** in a top-level object:
+```json
+{
+  "slides": [ ... ]
+}
+
+
+Where each slide has:
+{
+  "layout_name": "<layout name>",
+  "placeholders": {
+    "<placeholder_idx>": "String or object describing text/bullets/images/charts"
+  }
+}
+
+### Output Format
+
+Use this exact structure:
 
 <scratchpad>
-Summarized the introduction and identified key points on AI advancements.
-Decided to use the "Cover Slide_white_opt1" for the title and the "Text Only Slide_opt1" for content.
+[Your reasoning and notes go here.]
 </scratchpad>
 
 <json_output>
 {
   "slides": [
-    {
-      "layout_name": "Cover Slide_white_opt1",
-      "placeholders": {
-        "0": { "text": "Introduction to Artificial Intelligence" },
-        "1": { "text": "A Comprehensive Overview" }
-      }
-    },
-    {
-      "layout_name": "Text Only Slide_opt1",
-      "placeholders": {
-        "0": { "text": "Key Developments" },
-        "1": { "bullets": ["Machine Learning", "Neural Networks", "Deep Learning"] }
-      }
-    }
+    ...
   ]
 }
 </json_output>
 
-Make sure the JSON is valid (no extra text outside <json_output>...</json_output>).
+1. `<scratchpad>` block: Provide your internal reasoning briefly (if needed).
+2. `<json_output>` block: **Only valid JSON** describing the slides.
+
+Ensure the JSON is valid and does not contain any extraneous text.
