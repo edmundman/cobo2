@@ -62,7 +62,7 @@ def get_slide_layouts(pptx_path):
 # ------------- 3) BUILD PROMPT -------------
 def build_flexible_prompt(layout_info, simplification_level):
     """
-    Reads the .txt prompt and replaces {{SIMPLIFICATION_LEVEL}} and {{LAYOUT_INFO_JSON}}.
+    Reads the .txt prompt and replaces {{SIMPLIFICATION_LEVEL}} and {{LAYOUT_INFO}}.
     """
     # Load the text from file
     prompt_template = load_prompt_text(PROMPT_FILE)
@@ -132,7 +132,7 @@ def call_claude_for_slides(pdf_bytes, layout_info, simplification_level):
             st.write(assistant_reply)
             return None
     else:
-        # Fallback: try entire reply as JSON
+        # fallback: try entire reply as JSON
         try:
             return json.loads(assistant_reply)
         except:
@@ -215,33 +215,27 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                 if "image_key" in content and uploaded_images:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
-                        # Retrieve the position and size before removing the placeholder.
-                        left, top, width, height = shape.left, shape.top, shape.width, shape.height
                         sp = shape._element
                         sp.getparent().remove(sp)
+                        left, top, width, height = shape.left, shape.top, shape.width, shape.height
                         slide.shapes.add_picture(BytesIO(uploaded_images[img_key]), left, top, width, height)
                     continue
 
             # (B) If there's text/bullets
-            if isinstance(content, dict):
-                if "text" in content:
-                    tf = shape.text_frame
-                    tf.text = content["text"]
-
-                if "bullets" in content:
-                    tf = shape.text_frame
-                    # If text is already set, add bullets below
-                    if "text" in content:
-                        p = tf.add_paragraph()
-                        p.text = ""
-                    for bullet_item in content["bullets"]:
-                        p = tf.add_paragraph()
-                        p.text = bullet_item
-                        p.level = 0
-            else:
-                # If content is plain text
+            if "text" in content:
                 tf = shape.text_frame
-                tf.text = content
+                tf.text = content["text"]
+
+            if "bullets" in content:
+                tf = shape.text_frame
+                # If text is already set, add bullets below
+                if "text" in content:
+                    p = tf.add_paragraph()
+                    p.text = ""
+                for bullet_item in content["bullets"]:
+                    p = tf.add_paragraph()
+                    p.text = bullet_item
+                    p.level = 0
 
     return prs
 
@@ -305,23 +299,6 @@ def _add_trend_line_chart(slide, left, top, width, height, data_obj):
     chart.chart_title.text_frame.text = "Trend Line"
 
 # ------------- 6) MAIN STREAMLIT APP -------------
-
-def clear_pdf():
-    """
-    Clears the uploaded PDF and any generated slides JSON from the session state.
-    This ensures that the user must re-upload a PDF when the slider value changes.
-    """
-    st.session_state.pop("uploaded_pdf", None)
-    st.session_state.pop("slides_json", None)
-
-def slider_format_func(x):
-    if x == 1:
-        return "Academic"
-    elif x == 10:
-        return "Patient"
-    else:
-        return str(x)
-
 def main():
     st.title("Let's Create and Edit Your Presentation")
 
@@ -329,23 +306,11 @@ def main():
     if "layout_info" not in st.session_state:
         st.session_state.layout_info = get_slide_layouts(EXETER_TEMPLATE_PATH)
 
-    # Step B: User picks presentation style.
-    # The slider now displays 'Academic' at 1 and 'Patient' at 10.
-    simplification_level = st.slider(
-        "Choose presentation style",
-        1, 10, 5,
-        key="presentation_style",
-        format_func=slider_format_func
-    )
+    # Step B: user picks simplification level
+    simplification_level = st.slider("Choose simplification level", 1, 10, 5)
 
-    # If the presentation style has changed, clear the uploaded PDF and slides JSON.
-    if "prev_presentation_style" in st.session_state:
-        if st.session_state.prev_presentation_style != simplification_level:
-            clear_pdf()
-    st.session_state.prev_presentation_style = simplification_level
-
-    # Step C: User uploads PDF (with key so it can be cleared on style change)
-    uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"], key="uploaded_pdf")
+    # Step C: user uploads PDF
+    uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
 
     # Optional: user uploads images
     uploaded_images_files = st.file_uploader(
@@ -358,7 +323,7 @@ def main():
         for img in uploaded_images_files:
             uploaded_images[img.name] = img.read()
 
-    # Step D: Call Claude to get slides JSON
+    # Step D: call Claude to get slides JSON
     if uploaded_pdf and st.button("Let's Peel!"):
         with st.spinner("Generating slides..."):
             pdf_bytes = uploaded_pdf.read()
@@ -369,16 +334,18 @@ def main():
             else:
                 st.error("No valid JSON returned")
 
-    # If we have slides_json, show the editing interface
+    # If we have slides_json, show editing interface
     if "slides_json" in st.session_state and st.session_state.slides_json:
         st.header("Edit Generated Slides")
 
         slides = st.session_state.slides_json.get("slides", [])
 
-        # Slide Selection as bullet-style radio buttons
+        # **New Section**: Slide Selection as Bullet-Style Radio Buttons
         st.subheader("Select a Slide to Edit")
+        # Generate options with only slide numbers
         slide_options = [f"Slide {i+1}" for i in range(len(slides))]
         
+        # Use radio buttons for slide selection
         selected_slide_label = st.radio(
             "Choose a slide:",
             options=slide_options,
@@ -386,8 +353,10 @@ def main():
             key="selected_slide_radio"
         )
         
+        # Determine the selected slide index based on label
         selected_slide_index = slide_options.index(selected_slide_label)
 
+        # **Modified Line**: Display only the slide number in the editing header
         st.markdown(f"### Editing Slide {selected_slide_index + 1}")
 
         selected_slide = slides[selected_slide_index]
@@ -396,7 +365,7 @@ def main():
         # Iterate through placeholders and provide editing options
         for ph_idx, content in placeholders.items():
             layout_info = st.session_state.layout_info
-            # Find placeholder name and type for the current slide layout
+            # Find placeholder name and type
             placeholder_info = None
             for layout in layout_info:
                 if layout['layout_name'] == selected_slide.get("layout_name", ""):
@@ -409,12 +378,16 @@ def main():
                 continue
 
             ph_name = placeholder_info['placeholder_name']
+            ph_type = placeholder_info['shape_type']
+
             # Use 'Title' if the placeholder name contains 'title'
             display_name = "Title" if "title" in ph_name.lower() else ph_name
 
+            # **Modified Line**: Display only the placeholder name without slide number or placeholder type
             st.markdown(f"**{display_name}**")
+            # Removed: f"Slide {selected_slide_index + 1} - {display_name} ({ph_type})"
 
-            # Provide appropriate editing widgets based on content type
+            # Depending on content type, provide appropriate editing widgets
             if isinstance(content, dict):
                 if "chart_type" in content:
                     st.info("Chart placeholders are not editable via this interface.")
@@ -452,13 +425,13 @@ def main():
                     key=f"bullets_{selected_slide_index}_{ph_idx}"
                 )
                 edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
-            
             # Update the slides_json based on edits
             if edited_bullets:
                 if isinstance(content, dict):
                     slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
                     slides[selected_slide_index]['placeholders'][ph_idx]['bullets'] = edited_bullets
                 else:
+                    # If original content was plain text
                     slides[selected_slide_index]['placeholders'][ph_idx] = {
                         "text": edited_text,
                         "bullets": edited_bullets
@@ -469,7 +442,7 @@ def main():
                 else:
                     slides[selected_slide_index]['placeholders'][ph_idx] = edited_text
 
-        # Update session_state with edited slides
+        # Update the session_state with edited slides
         st.session_state.slides_json['slides'] = slides
 
         st.success("Slides JSON updated with your edits.")
