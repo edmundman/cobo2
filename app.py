@@ -311,8 +311,7 @@ def clear_pdf():
     Clears the uploaded PDF and any generated slides JSON from the session state.
     This ensures that the user must re-upload a PDF when the slider value changes.
     """
-    if "uploaded_pdf" in st.session_state:
-        st.session_state.uploaded_pdf = None
+    st.session_state.pop("uploaded_pdf", None)
     st.session_state.pop("slides_json", None)
 
 def main():
@@ -328,11 +327,17 @@ def main():
         "Choose presentation style",
         1, 10, 5,
         key="simplification_level",
-        on_change=clear_pdf,
         format_func=lambda x: "Academic" if x == 1 else ("Patient" if x == 10 else str(x))
     )
 
-    # Step C: User uploads PDF (note the key so it can be cleared on slider change)
+    # Check if the slider value has changed compared to the previously stored value;
+    # if so, clear the uploaded PDF and slides JSON.
+    if "prev_simplification_level" in st.session_state:
+        if st.session_state.prev_simplification_level != simplification_level:
+            clear_pdf()
+    st.session_state.prev_simplification_level = simplification_level
+
+    # Step C: User uploads PDF (note the key so it can be cleared when the slider changes)
     uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"], key="uploaded_pdf")
 
     # Optional: user uploads images
