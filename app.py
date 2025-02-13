@@ -76,7 +76,7 @@ def build_flexible_prompt(layout_info, fication_level, image_filenames):
     # Replace placeholders in the prompt
     prompt_filled = (
         prompt_template
-        .replace("{{FICATION_LEVEL}}", str(fication_level))
+        .replace("{{SIMPLIFICATION_LEVEL}}", str(fication_level))
         .replace("{{LAYOUT_INFO_JSON}}", layout_info_json)
         .replace("{{AVAILABLE_IMAGES}}", image_filenames_json)
     )
