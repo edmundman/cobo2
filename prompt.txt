@@ -18,6 +18,8 @@ A well-written paragraph (use this for slides meant to deliver a narrative, such
 Bullet points (via "bullets": ["Point 1", "Point 2"]) with accompanying short text.
 Limit the bullet point slides to one or two per presentation, so the overall tone remains narrative and engaging.
 Ensure that the presentation includes at least one graph.
+Please make the title quite short and consise 
+at a simplication score of 10 it should be really simple
 Include a semi-narrative style introduction slide and a semi-narrative style conclusion slide with extended, well-written paragraphs (avoid bullet points on these slides).
 If you want to include charts, you may use one of the following chart types:
 
