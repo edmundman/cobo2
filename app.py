@@ -247,7 +247,6 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                 tf = shape.text_frame
                 tf.word_wrap = True  # Ensures text wraps within the shape
                 tf.text = content
-                tf.fit_text(max_size=28, min_size=18)
     return prs
 
 # -------------------- EXAMPLE CHART UTILS --------------------
