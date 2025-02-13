@@ -70,7 +70,7 @@ def build_flexible_prompt(layout_info, fication_level, image_filenames):
     layout_info_json = json.dumps(layout_info, indent=2)
 
     # Convert image filenames to a JSON array (or a comma-separated list)
-    # We'll do a simple JSON array:
+    # We'll do a e JSON array:
     image_filenames_json = json.dumps(image_filenames, indent=2)
 
     # Replace placeholders in the prompt
@@ -319,13 +319,12 @@ def main():
 
     # Step B: user picks fication level
     st.markdown("#### Choose simplification Level")
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col1:
-        st.markdown("**Academic**")
-    with col2:
-        simplification_level = st.slider("", 1, 10, 5)
-    with col3:
-        st.markdown("**Patient**")
+    simplification_level = st.select_slider(
+    "Select Simplification Level",
+    options=list(range(1, 11)),
+    format_func=lambda x: "Academic" if x == 1 else "Patient" if x == 10 else f"Level {x}",
+    value=5)
+    st.write("Selected value:", simplification_level)
 
     # Step C: user uploads PDF
     uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
