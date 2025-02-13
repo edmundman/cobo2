@@ -469,12 +469,16 @@ def main():
                 ppt_buffer = BytesIO()
                 prs.save(ppt_buffer)
                 ppt_buffer.seek(0)
+                
+                st.success("PPTX generated and ready for download!")
+                
                 st.download_button(
                     "Download PPTX",
                     data=ppt_buffer.getvalue(),
                     file_name="my_presentation.pptx",
                     mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 )
+
                 st.success("PPTX generated and ready for download!")
 
 if __name__ == "__main__":
