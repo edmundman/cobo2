@@ -479,7 +479,5 @@ def main():
                     mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
                 )
 
-                st.success("PPTX generated and ready for download!")
-
 if __name__ == "__main__":
     main()
