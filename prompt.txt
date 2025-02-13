@@ -1,4 +1,4 @@
-You are tasked with extracting key information from a scientific paper PDF and generating a JSON structure describing a PowerPoint presentation. The level of simplification is {{SIMPLIFICATION_LEVEL}} (1 = Academic, 10 = Patient).
+You are tasked with extracting key information from a scientific paper PDF and generating a JSON structure describing a PowerPoint presentation. The level of simplification is {{SIMPLIFICATION_LEVEL}} (1 = Academic (complex) , 10 = Patient (simple) ).
 
 We have the following PowerPoint slide layouts available. Here is their JSON representation for your reference:
 
