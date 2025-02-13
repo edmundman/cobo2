@@ -318,13 +318,13 @@ def main():
 
     # Step B: user picks simplification level
     st.markdown("#### Choose Simplification Level")
-    col1, col2, col3 = st.columns([1, 2, 1])
-    with col1:
-        st.markdown("**Academic**")
-    with col2:
-        simplification_level = st.slider("", 1, 10, 5)
-    with col3:
-        st.markdown("**Patient**")
+    simplification_level = st.select_slider(
+    "Select Simplification Level",
+    options=list(range(1, 11)),
+    format_func=lambda x: "Academic" if x == 1 else "Patient" if x == 10 else f"Level {x}",
+    value=5)
+
+    st.write("Selected value:", simplification_level)
 
     # Step C: user uploads PDF
     uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
