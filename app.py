@@ -33,7 +33,7 @@ PROMPT_FILE = "prompt.txt"  # <-- Path to your .txt file with placeholders
 
 # ------------- 2) UTILITY: Load the Prompt Template -------------
 def load_prompt_text(prompt_path):
-    """Load the entire prompt from a text file (with placeholders like {{SIMPLIFICATION_LEVEL}}, etc.)."""
+    """Load the entire prompt from a text file (with placeholders like {{FICATION_LEVEL}}, etc.)."""
     with open(prompt_path, "r", encoding="utf-8") as f:
         return f.read()
 
@@ -60,9 +60,9 @@ def get_slide_layouts(pptx_path):
     return layout_info
 
 # ------------- 3) BUILD PROMPT -------------
-def build_flexible_prompt(layout_info, simplification_level, image_filenames):
+def build_flexible_prompt(layout_info, fication_level, image_filenames):
     """
-    Reads the .txt prompt and replaces {{SIMPLIFICATION_LEVEL}}, {{LAYOUT_INFO_JSON}}, and {{AVAILABLE_IMAGES}}.
+    Reads the .txt prompt and replaces {{FICATION_LEVEL}}, {{LAYOUT_INFO_JSON}}, and {{AVAILABLE_IMAGES}}.
     """
     prompt_template = load_prompt_text(PROMPT_FILE)
 
@@ -76,7 +76,7 @@ def build_flexible_prompt(layout_info, simplification_level, image_filenames):
     # Replace placeholders in the prompt
     prompt_filled = (
         prompt_template
-        .replace("{{SIMPLIFICATION_LEVEL}}", str(simplification_level))
+        .replace("{{FICATION_LEVEL}}", str(fication_level))
         .replace("{{LAYOUT_INFO_JSON}}", layout_info_json)
         .replace("{{AVAILABLE_IMAGES}}", image_filenames_json)
     )
@@ -84,12 +84,12 @@ def build_flexible_prompt(layout_info, simplification_level, image_filenames):
     return prompt_filled
 
 # ------------- 4) CALL CLAUDE -------------
-def call_claude_for_slides(pdf_bytes, layout_info, simplification_level, image_filenames):
+def call_claude_for_slides(pdf_bytes, layout_info, fication_level, image_filenames):
     """
     Calls Claude with the PDF, layout info, and available images to get slides JSON.
     """
     # Build your prompt string
-    final_prompt = build_flexible_prompt(layout_info, simplification_level, image_filenames)
+    final_prompt = build_flexible_prompt(layout_info, fication_level, image_filenames)
 
     # Encode the PDF to base64
     pdf_b64 = base64.b64encode(pdf_bytes).decode("utf-8")
@@ -316,15 +316,15 @@ def main():
     if "layout_info" not in st.session_state:
         st.session_state.layout_info = get_slide_layouts(EXETER_TEMPLATE_PATH)
 
-    # Step B: user picks simplification level
-    st.markdown("#### Choose Simplification Level")
-    simplification_level = st.select_slider(
-    "Select Simplification Level",
-    options=list(range(1, 11)),
-    format_func=lambda x: "Academic" if x == 1 else "Patient" if x == 10 else f"Level {x}",
-    value=5)
-
-    st.write("Selected value:", simplification_level)
+    # Step B: user picks fication level
+    st.markdown("#### Choose simplification Level")
+    col1, col2, col3 = st.columns([1, 2, 1])
+    with col1:
+        st.markdown("**Academic**")
+    with col2:
+        simplification_level = st.slider("", 1, 10, 5)
+    with col3:
+        st.markdown("**Patient**")
 
     # Step C: user uploads PDF
     uploaded_pdf = st.file_uploader("Upload PDF", type=["pdf"])
