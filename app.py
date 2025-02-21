@@ -54,7 +54,7 @@ client = anthropic.Anthropic(
 )
 MODEL_NAME = "claude-3-5-sonnet-20241022"
 
-EXETER_TEMPLATE_PATH = "exetertemplate2.pptx"
+EXETER_TEMPLATE_PATH = "exetertemplate.pptx"
 PROMPT_FILE = "prompt.txt"
 
 def load_prompt_text(prompt_path):
@@ -209,27 +209,29 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         img = Image.open(BytesIO(uploaded_images[img_key]))
                         img_width, img_height = img.size
                         
-                        # Calculate ratios
-                        width_ratio = placeholder_width / img_width
-                        height_ratio = placeholder_height / img_height
-                        # Use the larger ratio to ensure image fills the space
-                        scale = max(width_ratio, height_ratio)
+                        # Calculate aspect ratios
+                        img_ratio = img_width / float(img_height)
+                        placeholder_ratio = placeholder_width / float(placeholder_height)
                         
-                        # Calculate dimensions
-                        scaled_width = min(img_width * scale, placeholder_width)
-                        scaled_height = min(img_height * scale, placeholder_height)
-                        
+                        # Calculate new dimensions to fit within placeholder while maintaining aspect ratio
+                        if img_ratio > placeholder_ratio:  # image is wider
+                            final_width = placeholder_width
+                            final_height = placeholder_width / img_ratio
+                        else:  # image is taller
+                            final_height = placeholder_height
+                            final_width = placeholder_height * img_ratio
+                            
                         # Center the image in the placeholder
-                        left = shape.left + (placeholder_width - scaled_width) / 2
-                        top = shape.top + (placeholder_height - scaled_height) / 2
+                        left = shape.left + (placeholder_width - final_width) / 2
+                        top = shape.top + (placeholder_height - final_height) / 2
                         
                         # Add the image
                         pic = slide.shapes.add_picture(
                             BytesIO(uploaded_images[img_key]),
                             left,
                             top,
-                            width=scaled_width,
-                            height=scaled_height
+                            width=final_width,
+                            height=final_height
                         )
                     continue
 
@@ -311,6 +313,11 @@ def main():
         st.error("Please enter the correct password to access the application.")
         return
 
+    # Add logo and top space
+    col1, col2, col3 = st.columns([1, 4, 1])
+    with col1:
+        st.image("Peel-Lemon.svg", width=100)
+    
     # Add space before first title
     st.markdown("<div style='padding-top: 20px'></div>", unsafe_allow_html=True)
     st.markdown("## 1. Create your presentation")
