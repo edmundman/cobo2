@@ -137,7 +137,7 @@ def call_claude_for_slides(pdf_bytes, layout_info, simplification_level, image_f
         try:
             return json.loads(assistant_reply)
         except:
-            st.error("Powerpoint Generated.")
+            st.error("No valid JSON found in Claude's response.")
             return None
 
 def find_placeholder_by_idx(slide, idx):
@@ -302,9 +302,9 @@ def main():
             )
             if result:
                 st.session_state.slides_json = result
-                st.success("Received JSON from Claude!")
+                st.success("PowerPoint generated!")
             else:
-                st.error("No valid JSON returned")
+                st.error("Failed to generate PowerPoint")
 
     if "slides_json" in st.session_state and st.session_state.slides_json:
         st.header("Edit Generated Slides")
@@ -440,6 +440,9 @@ def main():
             mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
             use_container_width=True
         )
+        
+        # Add space at the bottom
+        st.markdown("<div style='padding-bottom: 100px'></div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
     main()
