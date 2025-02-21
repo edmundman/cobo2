@@ -307,7 +307,7 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a bar chart with explicitly enabled data labels for each point.
+    Creates a bar chart with staggered data labels to prevent overlapping.
     """
     # Extract data with defaults
     labels = chart_data.get("labels", [])
@@ -346,24 +346,41 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Configure value axis
+    # Configure value axis with extra padding for labels
     value_axis.minimum_scale = 0
     max_value = max(values) if values else 0
-    value_axis.maximum_scale = max_value + (max_value * 0.1)  # Add 10% padding
+    value_axis.maximum_scale = max_value + (max_value * 0.2)  # Add 20% padding for labels
     
     # Enable data labels at plot level
     plot = chart.plots[0]
     plot.has_data_labels = True
     
-    # Configure data labels for each series and point
+    # Configure data labels for each series and point with alternating positions
     for series in plot.series:
         series.has_data_labels = True
         points = series.points
-        for point in points:
+        
+        for i, point in enumerate(points):
             point.data_label.show_value = True
             point.data_label.number_format = '0"%"'
-            point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
             point.data_label.font.bold = True
+            
+            # Determine position based on value and index
+            if i % 2 == 0:
+                # Even-indexed points: top position
+                point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+            else:
+                # Odd-indexed points: right position
+                point.data_label.position = XL_DATA_LABEL_POSITION.RIGHT
+            
+            # Add slight offset for better visibility
+            if values[i] < max_value * 0.3:  # For lower values
+                point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+    
+    # Additional chart formatting for better label visibility
+    chart.has_legend = True
+    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+    chart.legend.include_in_layout = False
     
     return chart
     
