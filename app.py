@@ -323,17 +323,33 @@ def _add_trend_line_chart(slide, left, top, width, height, data_obj):
     series = plot.series[0]
     series.smooth = True  # Make the line smooth
 
-def _add_donut_chart(slide, left, top, width, height, data_list):
-    chart_data = ChartData()
-    cats = [d["category"] for d in data_list]
-    vals = [d["value"] for d in data_list]
-    chart_data.categories = cats
-    chart_data.add_series("Distribution", vals)
+def _add_donut_chart(slide, left, top, width, height, chart_data):
+    """
+    Creates a donut chart that can handle both formats:
+    1. List format: [{"category": "A", "value": 30}, ...]
+    2. Object format: {"labels": ["A", "B"], "values": [30, 40], "title": "Distribution"}
+    """
+    cd = ChartData()
+    
+    # Handle both data formats
+    if isinstance(chart_data, list):
+        # Original list format
+        categories = [d["category"] for d in chart_data]
+        values = [d["value"] for d in chart_data]
+        title = chart_data[0].get("title", "Distribution") if chart_data else "Distribution"
+    else:
+        # New object format
+        categories = chart_data.get("labels", [])
+        values = chart_data.get("values", [])
+        title = chart_data.get("title", "Distribution")
+
+    cd.categories = categories
+    cd.add_series("Distribution", values)
 
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.DOUGHNUT,
         left, top, width, height,
-        chart_data
+        cd
     ).chart
 
     # Configure donut properties
@@ -341,7 +357,7 @@ def _add_donut_chart(slide, left, top, width, height, data_list):
     
     # Set chart title
     chart.has_title = True
-    chart.chart_title.text_frame.text = data_list[0].get("title", "Distribution")
+    chart.chart_title.text_frame.text = title
 
     # Add data labels
     plot = chart.plots[0]
@@ -349,7 +365,6 @@ def _add_donut_chart(slide, left, top, width, height, data_list):
     data_labels = plot.data_labels
     data_labels.number_format = '0"%"'
     data_labels.position = XL_DATA_LABEL_POSITION.CENTER
-    data_labels.font.size = Pt(12)
 
 def main():
     # Sidebar authentication
