@@ -197,35 +197,86 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                     continue
 
                 if "image_key" in content and uploaded_images:
-                    # Image handling code remains the same
+                    img_key = content["image_key"]
+                    if img_key in uploaded_images:
+                        # Remove placeholder shape
+                        sp = shape._element
+                        sp.getparent().remove(sp)
+                        
+                        # Get placeholder dimensions
+                        placeholder_width = shape.width
+                        placeholder_height = shape.height
+                        
+                        # Create image object to get original dimensions
+                        from PIL import Image
+                        from io import BytesIO
+                        img = Image.open(BytesIO(uploaded_images[img_key]))
+                        img_width, img_height = img.size
+                        
+                        # Calculate aspect ratios
+                        img_ratio = img_width / float(img_height)
+                        placeholder_ratio = placeholder_width / float(placeholder_height)
+                        
+                        # Calculate new dimensions to fit within placeholder while maintaining aspect ratio
+                        if img_ratio > placeholder_ratio:  # image is wider
+                            final_width = placeholder_width
+                            final_height = placeholder_width / img_ratio
+                        else:  # image is taller
+                            final_height = placeholder_height
+                            final_width = placeholder_height * img_ratio
+                            
+                        # Center the image in the placeholder
+                        left = shape.left + (placeholder_width - final_width) / 2
+                        top = shape.top + (placeholder_height - final_height) / 2
+                        
+                        # Add the image
+                        pic = slide.shapes.add_picture(
+                            BytesIO(uploaded_images[img_key]),
+                            left,
+                            top,
+                            width=final_width,
+                            height=final_height
+                        )
                     continue
 
                 text_val = content.get("text", "")
                 bullet_vals = content.get("bullets", [])
                 
-                # Handle text and bullets differently based on content
+                # Handle text content
                 tf = shape.text_frame
+                tf.word_wrap = True
+
+                # If there's only text or a single bullet point, display as plain text
                 if text_val and not bullet_vals:
-                    # If there's only text and no bullets, just set the text
                     tf.text = text_val
                 elif not text_val and len(bullet_vals) == 1:
-                    # If there's only one bullet point, treat it as regular text
                     tf.text = bullet_vals[0]
                 else:
-                    # Handle multiple bullets or text with bullets
+                    # Handle combination of text and multiple bullets
                     if text_val:
                         tf.text = text_val
-                        start_para = tf.paragraphs[0]
-                        start_para.level = 0
                     else:
                         tf.text = ""
-                    
-                    # Add bullet points only if there are multiple items
+
+                    # Only create bullet points if there are multiple items
                     if len(bullet_vals) > 1:
+                        # If there's text, we need to start bullets from a new paragraph
+                        if text_val:
+                            p = tf.add_paragraph()
+                            p.text = bullet_vals[0]
+                            p.level = 0
+                            bullet_vals = bullet_vals[1:]
+                        
+                        # Add remaining bullets
                         for b_item in bullet_vals:
                             p = tf.add_paragraph()
                             p.text = b_item
                             p.level = 0
+                    elif len(bullet_vals) == 1 and text_val:
+                        # If there's text and one bullet, add it as a new paragraph without bullet
+                        p = tf.add_paragraph()
+                        p.text = bullet_vals[0]
+                        p.level = None
 
             elif isinstance(content, str):
                 tf = shape.text_frame
