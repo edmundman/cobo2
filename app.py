@@ -15,7 +15,7 @@ from pptx.enum.chart import XL_DATA_LABEL_POSITION
 
 # ------------- 1) SETUP -------------
 load_dotenv()
-st.set_page_config(page_title="Flexible Slides from PDF", layout="wide")
+st.set_page_config(page_title="PEEL", layout="wide")
 
 API_KEY = os.getenv("ANTHROPIC_API_KEY")
 if not API_KEY:
@@ -28,7 +28,7 @@ client = anthropic.Anthropic(
 )
 MODEL_NAME = "claude-3-5-sonnet-20241022"  # or your chosen model
 
-EXETER_TEMPLATE_PATH = "University-of-Exeter_Powerpoint_templates_16-9.pptx"
+EXETER_TEMPLATE_PATH = "exetertemplate.pptx"
 PROMPT_FILE = "prompt.txt"  # <-- Path to your .txt file with placeholders
 
 # ------------- 2) UTILITY: Load the Prompt Template -------------
