@@ -28,18 +28,6 @@ st.markdown("""
         width: 100%;
         padding: 1rem;
     }
-    /* Custom styling for Let's Peel button */
-    .stButton > button, .stDownloadButton > button {
-        background-color: #e7fd7d !important;
-        color: #544ff0 !important;
-        font-size: 1.2em !important;
-        padding: 0.8em 1.6em !important;
-        transition: all 0.3s ease !important;
-    }
-    .stButton > button:hover, .stDownloadButton > button:hover {
-        background-color: #d9fc5c !important;
-        transform: scale(1.05);
-    }
     </style>
 """, unsafe_allow_html=True)
 
@@ -54,7 +42,7 @@ client = anthropic.Anthropic(
 )
 MODEL_NAME = "claude-3-5-sonnet-20241022"
 
-EXETER_TEMPLATE_PATH = "exetertemplate.pptx"
+EXETER_TEMPLATE_PATH = "exetertemplate2.pptx"
 PROMPT_FILE = "prompt.txt"
 
 def load_prompt_text(prompt_path):
@@ -131,13 +119,13 @@ def call_claude_for_slides(pdf_bytes, layout_info, simplification_level, image_f
             raw_json = match.group(1)
             return json.loads(raw_json)
         except json.JSONDecodeError:
-            st.error("Invalid JSON in Claude's response.")
+            st.error("Failed to generate PowerPoint")
             return None
     else:
         try:
             return json.loads(assistant_reply)
         except:
-            st.error("No valid JSON found in Claude's response.")
+            st.error("Failed to generate PowerPoint")
             return None
 
 def find_placeholder_by_idx(slide, idx):
@@ -195,10 +183,41 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                 if "image_key" in content and uploaded_images:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
+                        # Remove placeholder shape
                         sp = shape._element
                         sp.getparent().remove(sp)
-                        left, top, width, height = shape.left, shape.top, shape.width, shape.height
-                        slide.shapes.add_picture(BytesIO(uploaded_images[img_key]), left, top, width, height)
+                        
+                        # Get placeholder dimensions
+                        placeholder_width = shape.width
+                        placeholder_height = shape.height
+                        
+                        # Create image object to get original dimensions
+                        from PIL import Image
+                        from io import BytesIO
+                        img = Image.open(BytesIO(uploaded_images[img_key]))
+                        img_width, img_height = img.size
+                        
+                        # Calculate scaling
+                        width_scale = placeholder_width / img_width
+                        height_scale = placeholder_height / img_height
+                        scale = min(width_scale, height_scale)
+                        
+                        # Calculate new dimensions
+                        final_width = img_width * scale
+                        final_height = img_height * scale
+                        
+                        # Calculate centering offsets
+                        left = shape.left + (placeholder_width - final_width) / 2
+                        top = shape.top + (placeholder_height - final_height) / 2
+                        
+                        # Add the image
+                        pic = slide.shapes.add_picture(
+                            BytesIO(uploaded_images[img_key]),
+                            left,
+                            top,
+                            width=final_width,
+                            height=final_height
+                        )
                     continue
 
                 text_val = content.get("text", "")
@@ -279,8 +298,7 @@ def main():
         st.error("Please enter the correct password to access the application.")
         return
 
-    # Main application content starts here
-    st.title("1. Create your presentation")
+    st.markdown("## 1. Create your presentation")
 
     if "layout_info" not in st.session_state:
         st.session_state.layout_info = get_slide_layouts(EXETER_TEMPLATE_PATH)
@@ -326,13 +344,11 @@ def main():
                 st.error("Failed to generate PowerPoint")
 
     if "slides_json" in st.session_state and st.session_state.slides_json:
-        st.header("Edit Generated Slides")
+        st.markdown("## 2. Edit your slides")
 
         slides = st.session_state.slides_json.get("slides", [])
 
-        # Slide selection with dropdown
-        st.subheader("Select a Slide to Edit")
-        # Create options list with slide numbers and titles
+        # Create slide options list with titles
         slide_options = []
         for i, slide in enumerate(slides):
             # Get title from placeholders if it exists
@@ -373,7 +389,6 @@ def main():
         placeholders = selected_slide.get("placeholders", {})
 
         for ph_idx, content in placeholders.items():
-            # Find placeholder name
             placeholder_info = None
             for layout in st.session_state.layout_info:
                 if layout['layout_name'] == selected_slide.get("layout_name", ""):
@@ -385,7 +400,14 @@ def main():
                 continue
 
             ph_name = placeholder_info['placeholder_name']
-            display_name = "Title" if "title" in ph_name.lower() else ph_name
+            
+            # Simplify display names and labels
+            if "title" in ph_name.lower():
+                display_name = "Title"
+                edit_label = "Edit title"
+            else:
+                display_name = "Content"
+                edit_label = "Edit content"
 
             st.markdown(f"**{display_name}**")
 
@@ -401,34 +423,33 @@ def main():
                         st.info("Image placeholders are not editable via this interface.")
                     continue
 
-                # Text + bullets
-                text = content.get("text", "")
-                bullets = content.get("bullets", [])
+                text_val = content.get("text", "")
+                bullet_vals = content.get("bullets", [])
             else:
-                text = content
-                bullets = []
+                text_val = content
+                bullet_vals = []
 
             # Editable text
             edited_text = st.text_area(
-                f"Edit Text for {display_name}",
-                value=text,
+                edit_label,
+                value=text_val,
                 key=f"text_{selected_slide_index}_{ph_idx}",
                 height=100
             )
 
             # Editable bullets
             edited_bullets = []
-            if bullets:
-                bullets_text = "\n".join(bullets)
+            if bullet_vals:
+                bullets_text = "\n".join(bullet_vals)
                 edited_bullets_text = st.text_area(
-                    f"Edit Bullets for {display_name} (one per line)",
+                    "Edit bullet points (one per line)",
                     value=bullets_text,
                     key=f"bullets_{selected_slide_index}_{ph_idx}"
                 )
                 edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
 
-            # Update in session
-            if bullets or edited_bullets:
+            # Update in session state
+            if bullet_vals or edited_bullets:
                 if isinstance(content, dict):
                     slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
                     slides[selected_slide_index]['placeholders'][ph_idx]['bullets'] = edited_bullets
@@ -445,6 +466,8 @@ def main():
 
         st.session_state.slides_json['slides'] = slides
 
+        st.markdown("## 3. Download Your Presentation")
+        
         # Combined Generate and Download button
         prs = Presentation(EXETER_TEMPLATE_PATH)
         prs = create_slides_from_json(prs, st.session_state.slides_json, st.session_state.layout_info, uploaded_images)
