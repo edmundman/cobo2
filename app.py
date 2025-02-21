@@ -307,7 +307,7 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a bar chart with staggered data labels to prevent overlapping.
+    Creates a bar chart with optimized data label placement.
     """
     # Extract data with defaults
     labels = chart_data.get("labels", [])
@@ -355,7 +355,7 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     plot = chart.plots[0]
     plot.has_data_labels = True
     
-    # Configure data labels for each series and point with alternating positions
+    # Configure data labels for each series and point
     for series in plot.series:
         series.has_data_labels = True
         points = series.points
@@ -364,24 +364,11 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
             point.data_label.show_value = True
             point.data_label.number_format = '0"%"'
             point.data_label.font.bold = True
+            point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
             
-            # Determine position based on value and index
-            if i % 2 == 0:
-                # Even-indexed points: top position
-                point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
-            else:
-                # Odd-indexed points: right position
+            # For very close values, use RIGHT position
+            if i > 0 and abs(values[i] - values[i-1]) < (max_value * 0.1):
                 point.data_label.position = XL_DATA_LABEL_POSITION.RIGHT
-            
-            # Add slight offset for better visibility
-            if values[i] < max_value * 0.3:  # For lower values
-                point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
-    
-    # Additional chart formatting for better label visibility
-    chart.has_legend = True
-    # Instead of using XL_LEGEND_POSITION, we'll position the legend differently
-    chart.legend.include_in_layout = False
-    chart.legend.position = 4  # 4 corresponds to bottom position
     
     return chart
     
