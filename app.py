@@ -256,47 +256,100 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
 
     return prs
 
-def _add_donut_chart(slide, left, top, width, height, data_list):
-    chart_data = ChartData()
-    cats = [d["category"] for d in data_list]
-    vals = [d["value"] for d in data_list]
-    chart_data.categories = cats
-    chart_data.add_series("Series 1", vals)
-
-    chart = slide.shapes.add_chart(
-        XL_CHART_TYPE.DOUGHNUT,
-        left, top, width, height,
-        chart_data
-    ).chart
-    chart.plots[0].donut_hole_size = 60
-    chart.has_title = True
-    chart.chart_title.text_frame.text = "Donut Chart"
-
 def _add_comparison_bars_chart(slide, left, top, width, height, data_obj):
     chart_data = CategoryChartData()
     chart_data.categories = data_obj.get("labels", [])
-    chart_data.add_series("Series 1", data_obj.get("values", []))
+    chart_data.add_series("Response Rate", data_obj.get("values", []))
 
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED,
         left, top, width, height,
         chart_data
     ).chart
+
+    # Set chart title from data
     chart.has_title = True
-    chart.chart_title.text_frame.text = "Bar Chart"
+    chart.chart_title.text_frame.text = data_obj.get("title", "Bar Chart")
+
+    # Configure axes
+    value_axis = chart.value_axis
+    category_axis = chart.category_axis
+    
+    # Set axis titles
+    value_axis.has_title = True
+    value_axis.axis_title.text_frame.text = data_obj.get("y_axis", "")
+    category_axis.has_title = True
+    category_axis.axis_title.text_frame.text = data_obj.get("x_axis", "")
+
+    # Add data labels
+    plot = chart.plots[0]
+    plot.has_data_labels = True
+    data_labels = plot.data_labels
+    data_labels.number_format = '0"%"'
+    data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
 
 def _add_trend_line_chart(slide, left, top, width, height, data_obj):
     chart_data = CategoryChartData()
     chart_data.categories = data_obj.get("dates", [])
-    chart_data.add_series("Series 1", data_obj.get("values", []))
+    chart_data.add_series(data_obj.get("y_axis", "Values"), data_obj.get("values", []))
 
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.LINE_MARKERS,
         left, top, width, height,
         chart_data
     ).chart
+
+    # Set chart title from data
     chart.has_title = True
-    chart.chart_title.text_frame.text = "Trend Line"
+    chart.chart_title.text_frame.text = data_obj.get("title", "Trend Line")
+
+    # Configure axes
+    value_axis = chart.value_axis
+    category_axis = chart.category_axis
+    
+    # Set axis titles
+    value_axis.has_title = True
+    value_axis.axis_title.text_frame.text = data_obj.get("y_axis", "")
+    category_axis.has_title = True
+    category_axis.axis_title.text_frame.text = data_obj.get("x_axis", "")
+
+    # Add data labels
+    plot = chart.plots[0]
+    plot.has_data_labels = True
+    data_labels = plot.data_labels
+    data_labels.position = XL_DATA_LABEL_POSITION.ABOVE
+
+    # Customize line appearance
+    series = plot.series[0]
+    series.smooth = True  # Make the line smooth
+
+def _add_donut_chart(slide, left, top, width, height, data_list):
+    chart_data = ChartData()
+    cats = [d["category"] for d in data_list]
+    vals = [d["value"] for d in data_list]
+    chart_data.categories = cats
+    chart_data.add_series("Distribution", vals)
+
+    chart = slide.shapes.add_chart(
+        XL_CHART_TYPE.DOUGHNUT,
+        left, top, width, height,
+        chart_data
+    ).chart
+
+    # Configure donut properties
+    chart.plots[0].donut_hole_size = 60
+    
+    # Set chart title
+    chart.has_title = True
+    chart.chart_title.text_frame.text = data_list[0].get("title", "Distribution")
+
+    # Add data labels
+    plot = chart.plots[0]
+    plot.has_data_labels = True
+    data_labels = plot.data_labels
+    data_labels.number_format = '0"%"'
+    data_labels.position = XL_DATA_LABEL_POSITION.CENTER
+    data_labels.font.size = Pt(12)
 
 def main():
     # Sidebar authentication
