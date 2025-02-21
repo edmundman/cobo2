@@ -307,7 +307,7 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a bar chart with optimized data label placement.
+    Creates a bar chart with rotated category labels to prevent overlapping.
     """
     # Extract data with defaults
     labels = chart_data.get("labels", [])
@@ -346,10 +346,15 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Configure value axis with extra padding for labels
+    # Configure value axis
     value_axis.minimum_scale = 0
     max_value = max(values) if values else 0
-    value_axis.maximum_scale = max_value + (max_value * 0.2)  # Add 20% padding for labels
+    value_axis.maximum_scale = max_value + (max_value * 0.2)
+    
+    # Configure category axis labels to prevent overlap
+    category_axis.tick_labels.offset = 100  # Add some spacing between labels and axis
+    if any(len(str(label)) > 8 for label in labels):  # If any label is long
+        category_axis.tick_labels.rotation = -45  # Rotate labels 45 degrees
     
     # Enable data labels at plot level
     plot = chart.plots[0]
@@ -365,10 +370,6 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
             point.data_label.number_format = '0"%"'
             point.data_label.font.bold = True
             point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
-            
-            # For very close values, use RIGHT position
-            if i > 0 and abs(values[i] - values[i-1]) < (max_value * 0.1):
-                point.data_label.position = XL_DATA_LABEL_POSITION.RIGHT
     
     return chart
     
