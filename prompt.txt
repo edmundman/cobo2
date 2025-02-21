@@ -62,7 +62,7 @@ Here, "dates" is a list of (often time-based) labels and "values" is a correspon
 
 If you want to include an image, please use "image_key": "<filename>", where <filename> is one of the available images listed below.
 
-We also have these images available – you must use all of them; do not skip any: {{AVAILABLE_IMAGES}}
+We also have these images available – you must use all of them; do not skip any, but please only use each image ONCE: {{AVAILABLE_IMAGES}}
 
 To include an image on a slide, add something like:
 
