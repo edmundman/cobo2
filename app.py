@@ -270,9 +270,11 @@ def main():
         st.markdown("---")
         st.markdown("""
         **Disclaimer:**
-        This tool uses AI to summarise medical documents, but it may contain errors or omissions. Always verify critical information with trusted medical sources and consult a qualified professional before making any decisions based on the content generated. The AI does not provide medical advice, diagnosis, or treatment. Use at your own discretion.
-
-
+        
+        By using this application, you acknowledge that:
+        - Content is AI-generated and may contain inaccuracies
+        - Results should be reviewed for correctness
+        - The application is not a substitute for professional judgment
         """)
 
     # Check password
