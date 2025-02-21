@@ -217,7 +217,7 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         img_ratio = img_width / float(img_height)
                         placeholder_ratio = placeholder_width / float(placeholder_height)
                         
-                        # Calculate new dimensions to fit within placeholder while maintaining aspect ratio
+                        # Calculate new dimensions to fit within placeholder
                         if img_ratio > placeholder_ratio:  # image is wider
                             final_width = placeholder_width
                             final_height = placeholder_width / img_ratio
@@ -242,46 +242,49 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                 text_val = content.get("text", "")
                 bullet_vals = content.get("bullets", [])
                 
-                # Handle text content
+                # Set up the text frame
                 tf = shape.text_frame
                 tf.word_wrap = True
+                
+                # Clear any existing paragraphs
+                for _ in range(len(tf.paragraphs[1:])):
+                    p = tf.paragraphs[-1]._p
+                    p.getparent().remove(p)
 
-                # If there's only text or a single bullet point, display as plain text
+                # Handle regular text without bullets
                 if text_val and not bullet_vals:
                     tf.text = text_val
+                    first_paragraph = tf.paragraphs[0]
+                    first_paragraph.level = None
+                
+                # Handle single bullet without text
                 elif not text_val and len(bullet_vals) == 1:
                     tf.text = bullet_vals[0]
+                    first_paragraph = tf.paragraphs[0]
+                    first_paragraph.level = None
+                
+                # Handle text with multiple bullets
                 else:
-                    # Handle combination of text and multiple bullets
                     if text_val:
                         tf.text = text_val
+                        first_paragraph = tf.paragraphs[0]
+                        first_paragraph.level = None
                     else:
                         tf.text = ""
-
-                    # Only create bullet points if there are multiple items
+                    
+                    # Add bullet points only for multiple items
                     if len(bullet_vals) > 1:
-                        # If there's text, we need to start bullets from a new paragraph
-                        if text_val:
+                        for bullet_text in bullet_vals:
                             p = tf.add_paragraph()
-                            p.text = bullet_vals[0]
-                            p.level = 0
-                            bullet_vals = bullet_vals[1:]
-                        
-                        # Add remaining bullets
-                        for b_item in bullet_vals:
-                            p = tf.add_paragraph()
-                            p.text = b_item
-                            p.level = 0
-                    elif len(bullet_vals) == 1 and text_val:
-                        # If there's text and one bullet, add it as a new paragraph without bullet
-                        p = tf.add_paragraph()
-                        p.text = bullet_vals[0]
-                        p.level = None
+                            p.text = bullet_text
+                            p.level = 0  # This creates a bullet point
 
             elif isinstance(content, str):
+                # Handle plain string content
                 tf = shape.text_frame
                 tf.word_wrap = True
                 tf.text = content
+                tf.paragraphs[0].level = None  # Ensure no bullet point
 
     return prs
 
