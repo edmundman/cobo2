@@ -307,7 +307,7 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a bar chart with improved label handling.
+    Creates a bar chart with stacked word labels.
     """
     # Extract data with defaults
     labels = chart_data.get("labels", [])
@@ -316,9 +316,12 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     x_axis = chart_data.get("x_axis", "Categories")
     y_axis = chart_data.get("y_axis", "Values")
     
+    # Convert spaces to line breaks in labels
+    formatted_labels = [label.replace(" ", "\n") for label in labels]
+    
     # Create chart data
     chart_data = CategoryChartData()
-    chart_data.categories = labels
+    chart_data.categories = formatted_labels
     chart_data.add_series(y_axis, values)
 
     # Create chart
@@ -342,12 +345,6 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Rotate category labels and adjust position
-    tick_labels = category_axis.tick_labels
-    tick_labels.number_format = "0"
-    tick_labels.offset = 100
-    tick_labels.rotation = -30  # Explicit rotation
-
     # Configure data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
@@ -364,7 +361,7 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
 
 def _add_trend_line_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a line chart with improved label handling.
+    Creates a line chart with stacked word labels.
     """
     # Extract data with defaults
     dates = chart_data.get("dates", [])
@@ -373,9 +370,12 @@ def _add_trend_line_chart(slide, left, top, width, height, chart_data):
     x_axis = chart_data.get("x_axis", "Time")
     y_axis = chart_data.get("y_axis", "Value")
     
+    # Convert spaces to line breaks in dates
+    formatted_dates = [date.replace(" ", "\n") for date in dates]
+    
     # Create chart data
     chart_data = CategoryChartData()
-    chart_data.categories = dates
+    chart_data.categories = formatted_dates
     chart_data.add_series(y_axis, values)
 
     # Create chart
@@ -399,12 +399,6 @@ def _add_trend_line_chart(slide, left, top, width, height, chart_data):
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Rotate category labels and adjust position
-    tick_labels = category_axis.tick_labels
-    tick_labels.number_format = "0"
-    tick_labels.offset = 100
-    tick_labels.rotation = -30  # Explicit rotation
-
     # Configure data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
@@ -414,13 +408,9 @@ def _add_trend_line_chart(slide, left, top, width, height, chart_data):
         series.smooth = True  # Make the line smooth
         for point in series.points:
             point.data_label.show_value = True
-            point.data_label.number_format = '0.0'  # One decimal place for precision
+            point.data_label.number_format = '0.0'
             point.data_label.font.bold = True
             point.data_label.position = XL_DATA_LABEL_POSITION.ABOVE
-
-    # Add gridlines for better readability
-    value_axis.has_major_gridlines = True
-    value_axis.major_gridlines.format.line.color.rgb = RGBColor(220, 220, 220)
 
     return chart
     
