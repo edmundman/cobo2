@@ -17,7 +17,7 @@ from pptx.enum.chart import XL_DATA_LABEL_POSITION
 load_dotenv()
 st.set_page_config(page_title="PEEL", layout="wide")
 
-    # Custom CSS for styling
+# Custom CSS for styling
 st.markdown("""
     <style>
     .block-container {
@@ -180,6 +180,7 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                 continue
 
             if isinstance(content, dict):
+                # --- Chart placeholders ---
                 if "chart_type" in content and "chart_data" in content:
                     sp = shape._element
                     sp.getparent().remove(sp)
@@ -196,6 +197,7 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         _add_trend_line_chart(slide, left, top, width, height, chart_data)
                     continue
 
+                # --- Image placeholders ---
                 if "image_key" in content and uploaded_images:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
@@ -230,7 +232,7 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         top = shape.top + (placeholder_height - final_height) / 2
                         
                         # Add the image
-                        pic = slide.shapes.add_picture(
+                        slide.shapes.add_picture(
                             BytesIO(uploaded_images[img_key]),
                             left,
                             top,
@@ -239,10 +241,10 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         )
                     continue
 
+                # --- Text placeholders (dict with "text" and possibly "bullets") ---
                 text_val = content.get("text", "")
                 bullet_vals = content.get("bullets", [])
                 
-                # Set up the text frame
                 tf = shape.text_frame
                 tf.word_wrap = True
                 
@@ -255,20 +257,26 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                 if text_val and not bullet_vals:
                     tf.text = text_val
                     first_paragraph = tf.paragraphs[0]
-                    first_paragraph.level = None
-                
+                    # Replaced .level = None with:
+                    first_paragraph.paragraph_format.bullet = False
+                    first_paragraph.level = 0
+
                 # Handle single bullet without text
                 elif not text_val and len(bullet_vals) == 1:
                     tf.text = bullet_vals[0]
                     first_paragraph = tf.paragraphs[0]
-                    first_paragraph.level = None
-                
+                    # Replaced .level = None with:
+                    first_paragraph.paragraph_format.bullet = False
+                    first_paragraph.level = 0
+
                 # Handle text with multiple bullets
                 else:
                     if text_val:
                         tf.text = text_val
                         first_paragraph = tf.paragraphs[0]
-                        first_paragraph.level = None
+                        # Replaced .level = None with:
+                        first_paragraph.paragraph_format.bullet = False
+                        first_paragraph.level = 0
                     else:
                         tf.text = ""
                     
@@ -280,11 +288,15 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                             p.level = 0  # This creates a bullet point
 
             elif isinstance(content, str):
-                # Handle plain string content
+                # --- Plain string content ---
                 tf = shape.text_frame
                 tf.word_wrap = True
                 tf.text = content
-                tf.paragraphs[0].level = None  # Ensure no bullet point
+
+                # Replacing .level = None with:
+                paragraph = tf.paragraphs[0]
+                paragraph.paragraph_format.bullet = False
+                paragraph.level = 0
 
     return prs
 
@@ -300,31 +312,25 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
         ]
     }
     """
-    # Extract data
     title = chart_data.get("title", "Distribution")
     data_list = chart_data.get("data", [])
     
-    # Validate data
     if not data_list:
         data_list = [{"category": "No Data", "value": 100}]
     
-    # Create legend labels with percentages
     categories = []
     values = []
     for item in data_list:
         category = item["category"]
         value = item["value"]
-        # Format the category with percentage
         category_with_percent = f"{category} ({value}%)"
         categories.append(category_with_percent)
         values.append(value)
 
-    # Create chart data
     cd = ChartData()
     cd.categories = categories
     cd.add_series("Distribution", values)
 
-    # Create and configure chart
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.DOUGHNUT,
         left, top, width, height,
@@ -350,44 +356,43 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
     Creates a bar chart with stacked word labels.
+    {
+      "title": "Comparison",
+      "labels": ["Category A", "Category B"],
+      "values": [30, 70],
+      "x_axis": "Categories",
+      "y_axis": "Values"
+    }
     """
-    # Extract data with defaults
     labels = chart_data.get("labels", [])
     values = chart_data.get("values", [])
     title = chart_data.get("title", "Comparison")
     x_axis = chart_data.get("x_axis", "Categories")
     y_axis = chart_data.get("y_axis", "Values")
     
-    # Convert spaces to line breaks in labels
     formatted_labels = [label.replace(" ", "\n") for label in labels]
     
-    # Create chart data
-    chart_data = CategoryChartData()
-    chart_data.categories = formatted_labels
-    chart_data.add_series(y_axis, values)
+    cat_data = CategoryChartData()
+    cat_data.categories = formatted_labels
+    cat_data.add_series(y_axis, values)
 
-    # Create chart
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED,
         left, top, width, height,
-        chart_data
+        cat_data
     ).chart
 
-    # Chart title
     chart.has_title = True
     chart.chart_title.text_frame.text = title
 
-    # Configure axes
     category_axis = chart.category_axis
     value_axis = chart.value_axis
     
-    # Set axis titles
     value_axis.has_title = True
     value_axis.axis_title.text_frame.text = y_axis
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Configure data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
     
@@ -403,45 +408,44 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
 
 def _add_trend_line_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a line chart with stacked word labels.
+    Creates a line chart with markers.
+    {
+      "title": "Trend",
+      "dates": ["Jan", "Feb", "Mar"],
+      "values": [10, 20, 15],
+      "x_axis": "Time",
+      "y_axis": "Value"
+    }
     """
-    # Extract data with defaults
     dates = chart_data.get("dates", [])
     values = chart_data.get("values", [])
     title = chart_data.get("title", "Trend")
     x_axis = chart_data.get("x_axis", "Time")
     y_axis = chart_data.get("y_axis", "Value")
     
-    # Convert spaces to line breaks in dates
     formatted_dates = [date.replace(" ", "\n") for date in dates]
     
-    # Create chart data
-    chart_data = CategoryChartData()
-    chart_data.categories = formatted_dates
-    chart_data.add_series(y_axis, values)
+    cat_data = CategoryChartData()
+    cat_data.categories = formatted_dates
+    cat_data.add_series(y_axis, values)
 
-    # Create chart
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.LINE_MARKERS,
         left, top, width, height,
-        chart_data
+        cat_data
     ).chart
 
-    # Chart title
     chart.has_title = True
     chart.chart_title.text_frame.text = title
 
-    # Configure axes
     category_axis = chart.category_axis
     value_axis = chart.value_axis
     
-    # Set axis titles
     value_axis.has_title = True
     value_axis.axis_title.text_frame.text = y_axis
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Configure data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
     
@@ -455,7 +459,7 @@ def _add_trend_line_chart(slide, left, top, width, height, chart_data):
             point.data_label.position = XL_DATA_LABEL_POSITION.ABOVE
 
     return chart
-    
+
 def main():
     # Sidebar authentication
     with st.sidebar:
@@ -467,7 +471,10 @@ def main():
         st.markdown("""
         **Disclaimer:**
         
-        This tool uses AI to summarise medical documents, but it may contain errors or omissions. Always verify critical information with trusted medical sources and consult a qualified professional before making any decisions based on the content generated. The AI does not provide medical advice, diagnosis, or treatment. Use at your own discretion.
+        This tool uses AI to summarise medical documents, but it may contain errors or omissions. 
+        Always verify critical information with trusted medical sources and consult a qualified 
+        professional before making any decisions based on the content generated. The AI does not 
+        provide medical advice, diagnosis, or treatment. Use at your own discretion.
         """)
 
     # Check password
@@ -560,7 +567,6 @@ def main():
                         title = content
                     break
             
-            # Format the option string
             option = f"Slide {i+1}"
             if title:
                 option += f" - {title}"
@@ -602,7 +608,7 @@ def main():
 
             st.markdown(f"**{display_name}**")
 
-            # Check if content is dict with chart/image
+            # Check if content is a dict with chart/image references
             if isinstance(content, dict):
                 if "chart_type" in content:
                     st.info("Chart placeholders are not editable via this interface.")
@@ -617,6 +623,7 @@ def main():
                 text_val = content.get("text", "")
                 bullet_vals = content.get("bullets", [])
             else:
+                # plain string
                 text_val = content
                 bullet_vals = []
 
@@ -637,7 +644,9 @@ def main():
                     value=bullets_text,
                     key=f"bullets_{selected_slide_index}_{ph_idx}"
                 )
-                edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
+                edited_bullets = [
+                    line.strip() for line in edited_bullets_text.split("\n") if line.strip()
+                ]
 
             # Update in session state
             if bullet_vals or edited_bullets:
@@ -659,7 +668,6 @@ def main():
 
         st.markdown("## 3. Download Your Presentation")
         
-        # Combined Generate and Download button
         prs = Presentation(EXETER_TEMPLATE_PATH)
         prs = create_slides_from_json(prs, st.session_state.slides_json, st.session_state.layout_info, uploaded_images)
         ppt_buffer = BytesIO()
