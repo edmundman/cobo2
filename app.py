@@ -29,14 +29,14 @@ st.markdown("""
         padding: 1rem;
     }
     /* Custom styling for Let's Peel button */
-    .stButton > button {
+    .stButton > button, .stDownloadButton > button {
         background-color: #e7fd7d !important;
         color: #544ff0 !important;
         font-size: 1.2em !important;
         padding: 0.8em 1.6em !important;
         transition: all 0.3s ease !important;
     }
-    .stButton > button:hover {
+    .stButton > button:hover, .stDownloadButton > button:hover {
         background-color: #d9fc5c !important;
         transform: scale(1.05);
     }
@@ -302,13 +302,106 @@ def main():
             )
             if result:
                 st.session_state.slides_json = result
-                st.success("Finished creating your powerpoint!")
+                st.success("Received JSON from Claude!")
             else:
                 st.error("No valid JSON returned")
 
     if "slides_json" in st.session_state and st.session_state.slides_json:
+        st.header("Edit Generated Slides")
+
         slides = st.session_state.slides_json.get("slides", [])
-        
+
+        # Slide selection
+        st.subheader("Select a Slide to Edit")
+        slide_options = [f"Slide {i+1}" for i in range(len(slides))]
+        selected_slide_label = st.radio(
+            "Choose a slide:",
+            options=slide_options,
+            index=0,
+            key="selected_slide_radio"
+        )
+        selected_slide_index = slide_options.index(selected_slide_label)
+
+        st.markdown(f"### Editing Slide {selected_slide_index + 1}")
+
+        selected_slide = slides[selected_slide_index]
+        placeholders = selected_slide.get("placeholders", {})
+
+        for ph_idx, content in placeholders.items():
+            # Find placeholder name
+            placeholder_info = None
+            for layout in st.session_state.layout_info:
+                if layout['layout_name'] == selected_slide.get("layout_name", ""):
+                    for ph in layout['placeholders']:
+                        if str(ph['placeholder_idx']) == str(ph_idx):
+                            placeholder_info = ph
+                            break
+            if not placeholder_info:
+                continue
+
+            ph_name = placeholder_info['placeholder_name']
+            display_name = "Title" if "title" in ph_name.lower() else ph_name
+
+            st.markdown(f"**{display_name}**")
+
+            # Check if content is dict with chart/image
+            if isinstance(content, dict):
+                if "chart_type" in content:
+                    st.info("Chart placeholders are not editable via this interface.")
+                    continue
+                if "image_key" in content:
+                    img_key = content["image_key"]
+                    if img_key in uploaded_images:
+                        st.image(uploaded_images.get(img_key, b''), caption=img_key, use_column_width=True)
+                        st.info("Image placeholders are not editable via this interface.")
+                    continue
+
+                # Text + bullets
+                text = content.get("text", "")
+                bullets = content.get("bullets", [])
+            else:
+                text = content
+                bullets = []
+
+            # Editable text
+            edited_text = st.text_area(
+                f"Edit Text for {display_name}",
+                value=text,
+                key=f"text_{selected_slide_index}_{ph_idx}",
+                height=100
+            )
+
+            # Editable bullets
+            edited_bullets = []
+            if bullets:
+                bullets_text = "\n".join(bullets)
+                edited_bullets_text = st.text_area(
+                    f"Edit Bullets for {display_name} (one per line)",
+                    value=bullets_text,
+                    key=f"bullets_{selected_slide_index}_{ph_idx}"
+                )
+                edited_bullets = [line.strip() for line in edited_bullets_text.split("\n") if line.strip()]
+
+            # Update in session
+            if bullets or edited_bullets:
+                if isinstance(content, dict):
+                    slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
+                    slides[selected_slide_index]['placeholders'][ph_idx]['bullets'] = edited_bullets
+                else:
+                    slides[selected_slide_index]['placeholders'][ph_idx] = {
+                        "text": edited_text,
+                        "bullets": edited_bullets
+                    }
+            else:
+                if isinstance(content, dict):
+                    slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
+                else:
+                    slides[selected_slide_index]['placeholders'][ph_idx] = edited_text
+
+        st.session_state.slides_json['slides'] = slides
+
+        # Generate PPTX
+        st.header("Generate Your Edited Presentation")
         if st.button("Generate PPT"):
             with st.spinner("Generating PowerPoint presentation..."):
                 prs = Presentation(EXETER_TEMPLATE_PATH)
@@ -317,11 +410,13 @@ def main():
                 prs.save(ppt_buffer)
                 ppt_buffer.seek(0)
                 
+                # Styled download button
                 st.download_button(
                     "Download PPTX",
                     data=ppt_buffer.getvalue(),
                     file_name="my_presentation.pptx",
-                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+                    use_container_width=True  # Makes the button full width
                 )
 
 if __name__ == "__main__":
