@@ -13,6 +13,10 @@ from pptx.chart.data import ChartData, CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.enum.chart import XL_DATA_LABEL_POSITION
 
+# Extra imports for images
+from pptx.enum.shapes import MSO_SHAPE
+from PIL import Image
+
 # ------------- 1) SETUP -------------
 load_dotenv()
 st.set_page_config(page_title="PEEL", layout="wide")
@@ -144,13 +148,13 @@ def call_claude_for_slides(pdf_bytes, layout_info, simplification_level, image_f
             st.error("Failed to generate PowerPoint")
             return None
 
-def find_placeholder_by_idx(slide, idx):
-    for shape in slide.placeholders:
-        if shape.placeholder_format.idx == idx:
-            return shape
-    return None
-
 def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None):
+    """
+    Main function that converts the JSON specification into actual PowerPoint slides.
+    - Replaces text placeholders with text/bullets
+    - Replaces image placeholders with "cover + crop" rectangles
+    - Creates charts if specified
+    """
     slide_master = prs.slide_masters[0]
     layout_name_map = {
         info["layout_name"]: layout_obj
@@ -179,8 +183,9 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
             if not shape:
                 continue
 
+            # If content is a dictionary, it could be an image, chart, or text/bullets
             if isinstance(content, dict):
-                # --- Chart placeholders ---
+                # --- CHART placeholders ---
                 if "chart_type" in content and "chart_data" in content:
                     sp = shape._element
                     sp.getparent().remove(sp)
@@ -197,51 +202,57 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         _add_trend_line_chart(slide, left, top, width, height, chart_data)
                     continue
 
-                # --- Image placeholders ---
+                # --- IMAGE placeholders (cover + crop approach) ---
                 if "image_key" in content and uploaded_images:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
                         # Remove placeholder shape
                         sp = shape._element
                         sp.getparent().remove(sp)
-                        
-                        # Get placeholder dimensions
-                        placeholder_width = shape.width
-                        placeholder_height = shape.height
-                        
-                        # Create image object to get original dimensions
-                        from PIL import Image
-                        from io import BytesIO
-                        img = Image.open(BytesIO(uploaded_images[img_key]))
+
+                        # Acquire placeholder geometry
+                        ph_left  = shape.left
+                        ph_top   = shape.top
+                        ph_width = shape.width
+                        ph_height = shape.height
+                        ph_ratio = ph_width / float(ph_height)
+
+                        # Load the uploaded image
+                        image_data = BytesIO(uploaded_images[img_key])
+                        img = Image.open(image_data)
                         img_width, img_height = img.size
-                        
-                        # Calculate aspect ratios
                         img_ratio = img_width / float(img_height)
-                        placeholder_ratio = placeholder_width / float(placeholder_height)
-                        
-                        # Calculate new dimensions to fit within placeholder
-                        if img_ratio > placeholder_ratio:  # image is wider
-                            final_width = placeholder_width
-                            final_height = placeholder_width / img_ratio
-                        else:  # image is taller
-                            final_height = placeholder_height
-                            final_width = placeholder_height * img_ratio
-                            
-                        # Center the image in the placeholder
-                        left = shape.left + (placeholder_width - final_width) / 2
-                        top = shape.top + (placeholder_height - final_height) / 2
-                        
-                        # Add the image
-                        slide.shapes.add_picture(
-                            BytesIO(uploaded_images[img_key]),
-                            left,
-                            top,
-                            width=final_width,
-                            height=final_height
+
+                        # Create new rectangular shape
+                        new_shape = slide.shapes.add_shape(
+                            MSO_SHAPE.RECTANGLE,
+                            ph_left, ph_top, ph_width, ph_height
                         )
+                        # Remove outline
+                        new_shape.line.fill.background()
+
+                        # Fill shape with image
+                        new_shape.fill.user_picture(image_data)
+
+                        # Crop to cover the shape without stretching
+                        if img_ratio > ph_ratio:
+                            # Image is wider -> crop left/right
+                            crop_left = (1 - (ph_ratio / img_ratio)) / 2
+                            new_shape.fill.crop_left = crop_left
+                            new_shape.fill.crop_right = crop_left
+                            new_shape.fill.crop_top = 0
+                            new_shape.fill.crop_bottom = 0
+                        else:
+                            # Image is taller -> crop top/bottom
+                            crop_top = (1 - (img_ratio / ph_ratio)) / 2
+                            new_shape.fill.crop_top = crop_top
+                            new_shape.fill.crop_bottom = crop_top
+                            new_shape.fill.crop_left = 0
+                            new_shape.fill.crop_right = 0
+
                     continue
 
-                # --- Text placeholders (dict with "text" and possibly "bullets") ---
+                # --- TEXT placeholders (with possible bullet points) ---
                 text_val = content.get("text", "")
                 bullet_vals = content.get("bullets", [])
                 
@@ -253,63 +264,67 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                     p = tf.paragraphs[-1]._p
                     p.getparent().remove(p)
 
-                # Handle regular text without bullets
+                # 1) Single block text, no bullets
                 if text_val and not bullet_vals:
                     tf.text = text_val
                     first_paragraph = tf.paragraphs[0]
-                    # Replaced .level = None with:
-                    first_paragraph.paragraph_format.bullet = False
+                    first_paragraph.bullet = False
                     first_paragraph.level = 0
 
-                # Handle single bullet without text
+                # 2) A single bullet with no "text" above it
                 elif not text_val and len(bullet_vals) == 1:
                     tf.text = bullet_vals[0]
                     first_paragraph = tf.paragraphs[0]
-                    # Replaced .level = None with:
-                    first_paragraph.paragraph_format.bullet = False
+                    first_paragraph.bullet = False
                     first_paragraph.level = 0
 
-                # Handle text with multiple bullets
+                # 3) A combination: text + multiple bullets
                 else:
                     if text_val:
                         tf.text = text_val
                         first_paragraph = tf.paragraphs[0]
-                        # Replaced .level = None with:
-                        first_paragraph.paragraph_format.bullet = False
+                        first_paragraph.bullet = False
                         first_paragraph.level = 0
                     else:
                         tf.text = ""
                     
-                    # Add bullet points only for multiple items
                     if len(bullet_vals) > 1:
                         for bullet_text in bullet_vals:
                             p = tf.add_paragraph()
                             p.text = bullet_text
-                            p.level = 0  # This creates a bullet point
+                            p.level = 0  # bullet point
 
+            # If content is just a string (not a dict)
             elif isinstance(content, str):
-                # --- Plain string content ---
                 tf = shape.text_frame
                 tf.word_wrap = True
                 tf.text = content
 
-                # Replacing .level = None with:
                 paragraph = tf.paragraphs[0]
-                paragraph.paragraph_format.bullet = False
+                paragraph.bullet = False
                 paragraph.level = 0
 
     return prs
 
+def find_placeholder_by_idx(slide, idx):
+    """
+    Helper to locate the placeholder shape with matching placeholder_format.idx
+    """
+    for shp in slide.placeholders:
+        if shp.placeholder_format.idx == idx:
+            return shp
+    return None
+
 def _add_donut_chart(slide, left, top, width, height, chart_data):
     """
     Creates a donut chart with percentages in both legend and data labels.
-    Handles the format:
+    Expects chart_data like:
     {
-        "title": "Gender Distribution",
-        "data": [
-            {"category": "Female", "value": 60},
-            {"category": "Male", "value": 40}
-        ]
+      "title": "Gender Distribution",
+      "data": [
+        {"category": "Female", "value": 60},
+        {"category": "Male", "value": 40}
+      ]
     }
     """
     title = chart_data.get("title", "Distribution")
@@ -337,14 +352,14 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
         cd
     ).chart
 
-    # Configure donut properties
+    # Donut hole
     chart.plots[0].donut_hole_size = 60
     
-    # Set chart title
+    # Chart title
     chart.has_title = True
     chart.chart_title.text_frame.text = title
 
-    # Configure data labels
+    # Data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
     data_labels = plot.data_labels
@@ -585,6 +600,7 @@ def main():
         selected_slide = slides[selected_slide_index]
         placeholders = selected_slide.get("placeholders", {})
 
+        # Let users edit text or bullet points
         for ph_idx, content in placeholders.items():
             placeholder_info = None
             for layout in st.session_state.layout_info:
@@ -608,7 +624,7 @@ def main():
 
             st.markdown(f"**{display_name}**")
 
-            # Check if content is a dict with chart/image references
+            # Chart placeholders or images are not edited directly
             if isinstance(content, dict):
                 if "chart_type" in content:
                     st.info("Chart placeholders are not editable via this interface.")
@@ -616,18 +632,20 @@ def main():
                 if "image_key" in content:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
-                        st.image(uploaded_images.get(img_key, b''), caption=img_key, use_container_width=True)
+                        st.image(uploaded_images.get(img_key, b''), 
+                                 caption=img_key, 
+                                 use_container_width=True)
                         st.info("Image placeholders are not editable via this interface.")
                     continue
 
+                # Otherwise, we have dict with "text" and possibly "bullets"
                 text_val = content.get("text", "")
                 bullet_vals = content.get("bullets", [])
             else:
-                # plain string
+                # Plain string
                 text_val = content
                 bullet_vals = []
 
-            # Editable text
             edited_text = st.text_area(
                 edit_label,
                 value=text_val,
@@ -635,7 +653,6 @@ def main():
                 height=100
             )
 
-            # Editable bullets
             edited_bullets = []
             if bullet_vals:
                 bullets_text = "\n".join(bullet_vals)
@@ -664,12 +681,16 @@ def main():
                 else:
                     slides[selected_slide_index]['placeholders'][ph_idx] = edited_text
 
+        # Update the slides JSON in the session
         st.session_state.slides_json['slides'] = slides
 
         st.markdown("## 3. Download Your Presentation")
         
+        # Create PPT from updated JSON
         prs = Presentation(EXETER_TEMPLATE_PATH)
-        prs = create_slides_from_json(prs, st.session_state.slides_json, st.session_state.layout_info, uploaded_images)
+        prs = create_slides_from_json(prs, st.session_state.slides_json, 
+                                      st.session_state.layout_info, 
+                                      uploaded_images)
         ppt_buffer = BytesIO()
         prs.save(ppt_buffer)
         ppt_buffer.seek(0)
