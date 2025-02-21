@@ -261,6 +261,28 @@ def _add_trend_line_chart(slide, left, top, width, height, data_obj):
     chart.chart_title.text_frame.text = "Trend Line"
 
 def main():
+    # Sidebar authentication
+    with st.sidebar:
+        st.title("Authentication")
+        password = st.text_input("Enter Password", type="password")
+        
+        # Disclaimer text
+        st.markdown("---")
+        st.markdown("""
+        **Disclaimer:**
+        
+        By using this application, you acknowledge that:
+        - Content is AI-generated and may contain inaccuracies
+        - Results should be reviewed for correctness
+        - The application is not a substitute for professional judgment
+        """)
+
+    # Check password
+    if password != "P33L2025":
+        st.error("Please enter the correct password to access the application.")
+        return
+
+    # Main application content starts here
     st.title("1. Create your presentation")
 
     if "layout_info" not in st.session_state:
