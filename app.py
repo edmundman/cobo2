@@ -302,7 +302,7 @@ def main():
             )
             if result:
                 st.session_state.slides_json = result
-                st.success("Received JSON from Claude!")
+                st.success("Finished creating your powerpoint!")
             else:
                 st.error("No valid JSON returned")
 
