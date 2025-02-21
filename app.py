@@ -256,96 +256,35 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
 
     return prs
 
-def _add_comparison_bars_chart(slide, left, top, width, height, data_obj):
-    chart_data = CategoryChartData()
-    chart_data.categories = data_obj.get("labels", [])
-    chart_data.add_series("Response Rate", data_obj.get("values", []))
-
-    chart = slide.shapes.add_chart(
-        XL_CHART_TYPE.COLUMN_CLUSTERED,
-        left, top, width, height,
-        chart_data
-    ).chart
-
-    # Set chart title from data
-    chart.has_title = True
-    chart.chart_title.text_frame.text = data_obj.get("title", "Bar Chart")
-
-    # Configure axes
-    value_axis = chart.value_axis
-    category_axis = chart.category_axis
-    
-    # Set axis titles
-    value_axis.has_title = True
-    value_axis.axis_title.text_frame.text = data_obj.get("y_axis", "")
-    category_axis.has_title = True
-    category_axis.axis_title.text_frame.text = data_obj.get("x_axis", "")
-
-    # Add data labels
-    plot = chart.plots[0]
-    plot.has_data_labels = True
-    data_labels = plot.data_labels
-    data_labels.number_format = '0"%"'
-    data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
-
-def _add_trend_line_chart(slide, left, top, width, height, data_obj):
-    chart_data = CategoryChartData()
-    chart_data.categories = data_obj.get("dates", [])
-    chart_data.add_series(data_obj.get("y_axis", "Values"), data_obj.get("values", []))
-
-    chart = slide.shapes.add_chart(
-        XL_CHART_TYPE.LINE_MARKERS,
-        left, top, width, height,
-        chart_data
-    ).chart
-
-    # Set chart title from data
-    chart.has_title = True
-    chart.chart_title.text_frame.text = data_obj.get("title", "Trend Line")
-
-    # Configure axes
-    value_axis = chart.value_axis
-    category_axis = chart.category_axis
-    
-    # Set axis titles
-    value_axis.has_title = True
-    value_axis.axis_title.text_frame.text = data_obj.get("y_axis", "")
-    category_axis.has_title = True
-    category_axis.axis_title.text_frame.text = data_obj.get("x_axis", "")
-
-    # Add data labels
-    plot = chart.plots[0]
-    plot.has_data_labels = True
-    data_labels = plot.data_labels
-    data_labels.position = XL_DATA_LABEL_POSITION.ABOVE
-
-    # Customize line appearance
-    series = plot.series[0]
-    series.smooth = True  # Make the line smooth
-
 def _add_donut_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a donut chart that can handle both formats:
-    1. List format: [{"category": "A", "value": 30}, ...]
-    2. Object format: {"labels": ["A", "B"], "values": [30, 40], "title": "Distribution"}
+    Creates a donut chart handling the exact JSON format:
+    {
+        "title": "Gender Distribution",
+        "data": [
+            {"category": "Female", "value": 60},
+            {"category": "Male", "value": 40}
+        ]
+    }
     """
-    cd = ChartData()
+    # Extract data from the correct structure
+    title = chart_data.get("title", "Distribution")
+    data_list = chart_data.get("data", [])
     
-    # Handle both data formats
-    if isinstance(chart_data, list):
-        # Original list format
-        categories = [d["category"] for d in chart_data]
-        values = [d["value"] for d in chart_data]
-        title = chart_data[0].get("title", "Distribution") if chart_data else "Distribution"
-    else:
-        # New object format
-        categories = chart_data.get("labels", [])
-        values = chart_data.get("values", [])
-        title = chart_data.get("title", "Distribution")
+    # Validate data
+    if not data_list:
+        data_list = [{"category": "No Data", "value": 100}]
+    
+    # Extract categories and values
+    categories = [item["category"] for item in data_list]
+    values = [item["value"] for item in data_list]
 
+    # Create chart data
+    cd = ChartData()
     cd.categories = categories
     cd.add_series("Distribution", values)
 
+    # Create and configure chart
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.DOUGHNUT,
         left, top, width, height,
@@ -366,6 +305,118 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
     data_labels.number_format = '0"%"'
     data_labels.position = XL_DATA_LABEL_POSITION.CENTER
 
+def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
+    """
+    Creates a bar chart handling the exact JSON format:
+    {
+        "title": "Treatment Response",
+        "labels": ["Group A", "Group B", "Group C"],
+        "values": [75, 45, 62],
+        "x_axis": "Treatment Groups",
+        "y_axis": "Response Rate (%)"
+    }
+    """
+    # Extract data with defaults
+    labels = chart_data.get("labels", [])
+    values = chart_data.get("values", [])
+    title = chart_data.get("title", "Comparison")
+    x_axis = chart_data.get("x_axis", "Categories")
+    y_axis = chart_data.get("y_axis", "Values")
+    
+    # Validate data
+    if not labels or not values:
+        labels = ["No Data"]
+        values = [0]
+    
+    # Create chart data
+    chart_data = CategoryChartData()
+    chart_data.categories = labels
+    chart_data.add_series("Values", values)
+
+    # Create and configure chart
+    chart = slide.shapes.add_chart(
+        XL_CHART_TYPE.COLUMN_CLUSTERED,
+        left, top, width, height,
+        chart_data
+    ).chart
+
+    # Set chart title
+    chart.has_title = True
+    chart.chart_title.text_frame.text = title
+
+    # Configure axes
+    value_axis = chart.value_axis
+    category_axis = chart.category_axis
+    
+    value_axis.has_title = True
+    value_axis.axis_title.text_frame.text = y_axis
+    category_axis.has_title = True
+    category_axis.axis_title.text_frame.text = x_axis
+
+    # Add data labels
+    plot = chart.plots[0]
+    plot.has_data_labels = True
+    data_labels = plot.data_labels
+    data_labels.number_format = '0"%"'
+    data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+
+def _add_trend_line_chart(slide, left, top, width, height, chart_data):
+    """
+    Creates a trend line chart handling the exact JSON format:
+    {
+        "title": "Monthly Progress",
+        "dates": ["Jan", "Feb", "Mar", "Apr"],
+        "values": [10, 20, 15, 25],
+        "x_axis": "Month",
+        "y_axis": "Progress Score"
+    }
+    """
+    # Extract data with defaults
+    dates = chart_data.get("dates", [])
+    values = chart_data.get("values", [])
+    title = chart_data.get("title", "Trend")
+    x_axis = chart_data.get("x_axis", "Time")
+    y_axis = chart_data.get("y_axis", "Value")
+    
+    # Validate data
+    if not dates or not values:
+        dates = ["No Data"]
+        values = [0]
+    
+    # Create chart data
+    chart_data = CategoryChartData()
+    chart_data.categories = dates
+    chart_data.add_series(y_axis, values)
+
+    # Create and configure chart
+    chart = slide.shapes.add_chart(
+        XL_CHART_TYPE.LINE_MARKERS,
+        left, top, width, height,
+        chart_data
+    ).chart
+
+    # Set chart title
+    chart.has_title = True
+    chart.chart_title.text_frame.text = title
+
+    # Configure axes
+    value_axis = chart.value_axis
+    category_axis = chart.category_axis
+    
+    value_axis.has_title = True
+    value_axis.axis_title.text_frame.text = y_axis
+    category_axis.has_title = True
+    category_axis.axis_title.text_frame.text = x_axis
+
+    # Add data labels
+    plot = chart.plots[0]
+    plot.has_data_labels = True
+    data_labels = plot.data_labels
+    data_labels.position = XL_DATA_LABEL_POSITION.ABOVE
+
+    # Customize line appearance
+    series = plot.series[0]
+    series.smooth = True
 def main():
     # Sidebar authentication
     with st.sidebar:
