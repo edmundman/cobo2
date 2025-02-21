@@ -54,7 +54,7 @@ client = anthropic.Anthropic(
 )
 MODEL_NAME = "claude-3-5-sonnet-20241022"
 
-EXETER_TEMPLATE_PATH = "exetertemplate2.pptx"
+EXETER_TEMPLATE_PATH = "exetertemplate.pptx"
 PROMPT_FILE = "prompt.txt"
 
 def load_prompt_text(prompt_path):
@@ -311,14 +311,40 @@ def main():
 
         slides = st.session_state.slides_json.get("slides", [])
 
-        # Slide selection
+        # Slide selection with dropdown
         st.subheader("Select a Slide to Edit")
-        slide_options = [f"Slide {i+1}" for i in range(len(slides))]
-        selected_slide_label = st.radio(
+        # Create options list with slide numbers and titles
+        slide_options = []
+        for i, slide in enumerate(slides):
+            # Get title from placeholders if it exists
+            title = None
+            for ph_idx, content in slide.get("placeholders", {}).items():
+                placeholder_info = None
+                # Find the placeholder info
+                for layout in st.session_state.layout_info:
+                    if layout['layout_name'] == slide.get("layout_name", ""):
+                        for ph in layout['placeholders']:
+                            if str(ph['placeholder_idx']) == str(ph_idx):
+                                placeholder_info = ph
+                                break
+                if placeholder_info and "title" in placeholder_info['placeholder_name'].lower():
+                    if isinstance(content, dict):
+                        title = content.get("text", "")
+                    else:
+                        title = content
+                    break
+            
+            # Format the option string
+            option = f"Slide {i+1}"
+            if title:
+                option += f" - {title}"
+            slide_options.append(option)
+
+        selected_slide_label = st.selectbox(
             "Choose a slide:",
             options=slide_options,
             index=0,
-            key="selected_slide_radio"
+            key="selected_slide_dropdown"
         )
         selected_slide_index = slide_options.index(selected_slide_label)
 
