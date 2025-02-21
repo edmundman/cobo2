@@ -54,7 +54,7 @@ client = anthropic.Anthropic(
 )
 MODEL_NAME = "claude-3-5-sonnet-20241022"
 
-EXETER_TEMPLATE_PATH = "exetertemplate.pptx"
+EXETER_TEMPLATE_PATH = "exetertemplate2.pptx"
 PROMPT_FILE = "prompt.txt"
 
 def load_prompt_text(prompt_path):
