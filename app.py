@@ -54,7 +54,7 @@ client = anthropic.Anthropic(
 )
 MODEL_NAME = "claude-3-5-sonnet-20241022"
 
-EXETER_TEMPLATE_PATH = "exetertemplate.pptx"
+EXETER_TEMPLATE_PATH = "exetertemplate2.pptx"
 PROMPT_FILE = "prompt.txt"
 
 def load_prompt_text(prompt_path):
@@ -202,8 +202,6 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         # Get placeholder dimensions
                         placeholder_width = shape.width
                         placeholder_height = shape.height
-                        left = shape.left
-                        top = shape.top
                         
                         # Create image object to get original dimensions
                         from PIL import Image
@@ -211,27 +209,19 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         img = Image.open(BytesIO(uploaded_images[img_key]))
                         img_width, img_height = img.size
                         
-                        # Calculate aspect ratios
-                        img_ratio = img_width / img_height
-                        placeholder_ratio = placeholder_width / placeholder_height
+                        # Calculate ratios
+                        width_ratio = placeholder_width / img_width
+                        height_ratio = placeholder_height / img_height
+                        # Use the larger ratio to ensure image fills the space
+                        scale = max(width_ratio, height_ratio)
                         
-                        # Calculate dimensions to fill the space while maintaining aspect ratio
-                        if img_ratio > placeholder_ratio:
-                            # Image is wider - scale to height and crop width
-                            scale = placeholder_height / img_height
-                            scaled_width = img_width * scale
-                            scaled_height = placeholder_height
-                            # Center the crop
-                            crop_left = (scaled_width - placeholder_width) / 2
-                            left = left - crop_left
-                        else:
-                            # Image is taller - scale to width and crop height
-                            scale = placeholder_width / img_width
-                            scaled_width = placeholder_width
-                            scaled_height = img_height * scale
-                            # Center the crop
-                            crop_top = (scaled_height - placeholder_height) / 2
-                            top = top - crop_top
+                        # Calculate dimensions
+                        scaled_width = min(img_width * scale, placeholder_width)
+                        scaled_height = min(img_height * scale, placeholder_height)
+                        
+                        # Center the image in the placeholder
+                        left = shape.left + (placeholder_width - scaled_width) / 2
+                        top = shape.top + (placeholder_height - scaled_height) / 2
                         
                         # Add the image
                         pic = slide.shapes.add_picture(
@@ -367,6 +357,9 @@ def main():
                 st.success("PowerPoint generated!")
             else:
                 st.error("Failed to generate PowerPoint")
+        
+        # Add space after Let's Peel button
+        st.markdown("<div style='padding-bottom: 30px'></div>", unsafe_allow_html=True)
 
     if "slides_json" in st.session_state and st.session_state.slides_json:
         st.markdown("## 2. Edit your slides")
