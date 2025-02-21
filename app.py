@@ -400,7 +400,7 @@ def main():
                 if "image_key" in content:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
-                        st.image(uploaded_images.get(img_key, b''), caption=img_key, use_column_width=True)
+                        st.image(uploaded_images.get(img_key, b''), caption=img_key, use_container_width=True)
                         st.info("Image placeholders are not editable via this interface.")
                     continue
 
