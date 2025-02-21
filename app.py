@@ -28,6 +28,18 @@ st.markdown("""
         width: 100%;
         padding: 1rem;
     }
+    /* Custom styling for Let's Peel button */
+    .stButton > button {
+        background-color: #e7fd7d !important;
+        color: #544ff0 !important;
+        font-size: 1.2em !important;
+        padding: 0.8em 1.6em !important;
+        transition: all 0.3s ease !important;
+    }
+    .stButton > button:hover {
+        background-color: #d9fc5c !important;
+        transform: scale(1.05);
+    }
     </style>
 """, unsafe_allow_html=True)
 
