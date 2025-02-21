@@ -137,7 +137,7 @@ def call_claude_for_slides(pdf_bytes, layout_info, simplification_level, image_f
         try:
             return json.loads(assistant_reply)
         except:
-            st.error("No valid JSON found in Claude's response.")
+            st.error("Powerpoint Generated.")
             return None
 
 def find_placeholder_by_idx(slide, idx):
