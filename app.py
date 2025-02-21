@@ -13,8 +13,6 @@ from pptx.chart.data import ChartData, CategoryChartData
 from pptx.enum.chart import XL_CHART_TYPE
 from pptx.enum.chart import XL_DATA_LABEL_POSITION
 
-# Extra imports for images
-from pptx.enum.shapes import MSO_SHAPE
 from PIL import Image
 
 # ------------- 1) SETUP -------------
@@ -148,12 +146,53 @@ def call_claude_for_slides(pdf_bytes, layout_info, simplification_level, image_f
             st.error("Failed to generate PowerPoint")
             return None
 
+def find_placeholder_by_idx(slide, idx):
+    """
+    Locate the placeholder shape that has the given placeholder_format.idx
+    """
+    for shp in slide.placeholders:
+        if shp.placeholder_format.idx == idx:
+            return shp
+    return None
+
+def add_picture_cover_cropped(slide, image_data, left, top, width, height):
+    """
+    Adds an image to the slide *covering* the specified bounding box
+    without stretching. Crops any overflow to achieve a center-crop “cover”.
+    """
+    # Load image for ratio
+    img = Image.open(image_data)
+    w, h = img.size
+    image_ratio = w / float(h)
+    placeholder_ratio = width / float(height)
+
+    # Create the Picture shape with the bounding box
+    pic = slide.shapes.add_picture(image_data, left, top, width=width, height=height)
+    
+    # pic.crop_left, pic.crop_right, etc., are fractions of the original image
+    if image_ratio > placeholder_ratio:
+        # The image is relatively wider => fill height, crop left/right
+        crop_amount = (1.0 - (placeholder_ratio / image_ratio)) / 2.0
+        pic.crop_left = crop_amount
+        pic.crop_right = crop_amount
+        pic.crop_top = 0
+        pic.crop_bottom = 0
+    else:
+        # The image is relatively taller => fill width, crop top/bottom
+        crop_amount = (1.0 - (image_ratio / placeholder_ratio)) / 2.0
+        pic.crop_top = crop_amount
+        pic.crop_bottom = crop_amount
+        pic.crop_left = 0
+        pic.crop_right = 0
+
+    return pic
+
 def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None):
     """
-    Main function that converts the JSON specification into actual PowerPoint slides.
-    - Replaces text placeholders with text/bullets
-    - Replaces image placeholders with "cover + crop" rectangles
-    - Creates charts if specified
+    Converts the JSON specification into actual PowerPoint slides.
+    - Text placeholders (with or without bullet points)
+    - Charts (donut, comparison bars, trend line)
+    - Images using a “cover + crop” approach
     """
     slide_master = prs.slide_masters[0]
     layout_name_map = {
@@ -172,7 +211,7 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
 
         slide = prs.slides.add_slide(layout)
         placeholder_defs = slide_def.get("placeholders", {})
-        
+
         for placeholder_idx, content in placeholder_defs.items():
             try:
                 ph_idx = int(placeholder_idx)
@@ -183,9 +222,9 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
             if not shape:
                 continue
 
-            # If content is a dictionary, it could be an image, chart, or text/bullets
+            # If it's a dict, check if it's chart, image, or text data
             if isinstance(content, dict):
-                # --- CHART placeholders ---
+                # --- Chart placeholders ---
                 if "chart_type" in content and "chart_data" in content:
                     sp = shape._element
                     sp.getparent().remove(sp)
@@ -202,131 +241,83 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
                         _add_trend_line_chart(slide, left, top, width, height, chart_data)
                     continue
 
-                # --- IMAGE placeholders (cover + crop approach) ---
+                # --- Image placeholders (cover + crop) ---
                 if "image_key" in content and uploaded_images:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
-                        # Remove placeholder shape
+                        # Remove the original placeholder shape
                         sp = shape._element
                         sp.getparent().remove(sp)
 
-                        # Acquire placeholder geometry
-                        ph_left  = shape.left
-                        ph_top   = shape.top
-                        ph_width = shape.width
-                        ph_height = shape.height
-                        ph_ratio = ph_width / float(ph_height)
-
-                        # Load the uploaded image
-                        image_data = BytesIO(uploaded_images[img_key])
-                        img = Image.open(image_data)
-                        img_width, img_height = img.size
-                        img_ratio = img_width / float(img_height)
-
-                        # Create new rectangular shape
-                        new_shape = slide.shapes.add_shape(
-                            MSO_SHAPE.RECTANGLE,
-                            ph_left, ph_top, ph_width, ph_height
+                        # Add the image in “cover” mode, with center-crop
+                        add_picture_cover_cropped(
+                            slide,
+                            BytesIO(uploaded_images[img_key]),
+                            shape.left,
+                            shape.top,
+                            shape.width,
+                            shape.height
                         )
-                        # Remove outline
-                        new_shape.line.fill.background()
-
-                        # Fill shape with image
-                        new_shape.fill.user_picture(image_data)
-
-                        # Crop to cover the shape without stretching
-                        if img_ratio > ph_ratio:
-                            # Image is wider -> crop left/right
-                            crop_left = (1 - (ph_ratio / img_ratio)) / 2
-                            new_shape.fill.crop_left = crop_left
-                            new_shape.fill.crop_right = crop_left
-                            new_shape.fill.crop_top = 0
-                            new_shape.fill.crop_bottom = 0
-                        else:
-                            # Image is taller -> crop top/bottom
-                            crop_top = (1 - (img_ratio / ph_ratio)) / 2
-                            new_shape.fill.crop_top = crop_top
-                            new_shape.fill.crop_bottom = crop_top
-                            new_shape.fill.crop_left = 0
-                            new_shape.fill.crop_right = 0
-
                     continue
 
-                # --- TEXT placeholders (with possible bullet points) ---
+                # --- Text placeholders with possible bullet array ---
                 text_val = content.get("text", "")
                 bullet_vals = content.get("bullets", [])
                 
                 tf = shape.text_frame
                 tf.word_wrap = True
-                
-                # Clear any existing paragraphs
+
+                # Clear existing paragraphs
                 for _ in range(len(tf.paragraphs[1:])):
                     p = tf.paragraphs[-1]._p
                     p.getparent().remove(p)
 
-                # 1) Single block text, no bullets
                 if text_val and not bullet_vals:
+                    # Single block of text, no bullets
                     tf.text = text_val
-                    first_paragraph = tf.paragraphs[0]
-                    first_paragraph.bullet = False
-                    first_paragraph.level = 0
+                    p = tf.paragraphs[0]
+                    p.bullet = False
+                    p.level = 0
 
-                # 2) A single bullet with no "text" above it
                 elif not text_val and len(bullet_vals) == 1:
+                    # A single bullet, but treat it as plain text
                     tf.text = bullet_vals[0]
-                    first_paragraph = tf.paragraphs[0]
-                    first_paragraph.bullet = False
-                    first_paragraph.level = 0
+                    p = tf.paragraphs[0]
+                    p.bullet = False
+                    p.level = 0
 
-                # 3) A combination: text + multiple bullets
                 else:
+                    # Possibly text + multiple bullets
                     if text_val:
                         tf.text = text_val
-                        first_paragraph = tf.paragraphs[0]
-                        first_paragraph.bullet = False
-                        first_paragraph.level = 0
+                        p = tf.paragraphs[0]
+                        p.bullet = False
+                        p.level = 0
                     else:
                         tf.text = ""
-                    
+
                     if len(bullet_vals) > 1:
                         for bullet_text in bullet_vals:
-                            p = tf.add_paragraph()
-                            p.text = bullet_text
-                            p.level = 0  # bullet point
+                            bp = tf.add_paragraph()
+                            bp.text = bullet_text
+                            # if truly want bullets, do bp.bullet = True,
+                            # but your request is "still got bullet points" so let's keep them off:
+                            bp.bullet = False
+                            bp.level = 0
 
-            # If content is just a string (not a dict)
+            # If content is just a simple string
             elif isinstance(content, str):
                 tf = shape.text_frame
                 tf.word_wrap = True
                 tf.text = content
 
-                paragraph = tf.paragraphs[0]
-                paragraph.bullet = False
-                paragraph.level = 0
+                p = tf.paragraphs[0]
+                p.bullet = False
+                p.level = 0
 
     return prs
 
-def find_placeholder_by_idx(slide, idx):
-    """
-    Helper to locate the placeholder shape with matching placeholder_format.idx
-    """
-    for shp in slide.placeholders:
-        if shp.placeholder_format.idx == idx:
-            return shp
-    return None
-
 def _add_donut_chart(slide, left, top, width, height, chart_data):
-    """
-    Creates a donut chart with percentages in both legend and data labels.
-    Expects chart_data like:
-    {
-      "title": "Gender Distribution",
-      "data": [
-        {"category": "Female", "value": 60},
-        {"category": "Male", "value": 40}
-      ]
-    }
-    """
     title = chart_data.get("title", "Distribution")
     data_list = chart_data.get("data", [])
     
@@ -352,14 +343,10 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
         cd
     ).chart
 
-    # Donut hole
     chart.plots[0].donut_hole_size = 60
-    
-    # Chart title
     chart.has_title = True
     chart.chart_title.text_frame.text = title
 
-    # Data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
     data_labels = plot.data_labels
@@ -369,19 +356,9 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
     return chart
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
-    """
-    Creates a bar chart with stacked word labels.
-    {
-      "title": "Comparison",
-      "labels": ["Category A", "Category B"],
-      "values": [30, 70],
-      "x_axis": "Categories",
-      "y_axis": "Values"
-    }
-    """
+    title = chart_data.get("title", "Comparison")
     labels = chart_data.get("labels", [])
     values = chart_data.get("values", [])
-    title = chart_data.get("title", "Comparison")
     x_axis = chart_data.get("x_axis", "Categories")
     y_axis = chart_data.get("y_axis", "Values")
     
@@ -422,19 +399,9 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     return chart
 
 def _add_trend_line_chart(slide, left, top, width, height, chart_data):
-    """
-    Creates a line chart with markers.
-    {
-      "title": "Trend",
-      "dates": ["Jan", "Feb", "Mar"],
-      "values": [10, 20, 15],
-      "x_axis": "Time",
-      "y_axis": "Value"
-    }
-    """
+    title = chart_data.get("title", "Trend")
     dates = chart_data.get("dates", [])
     values = chart_data.get("values", [])
-    title = chart_data.get("title", "Trend")
     x_axis = chart_data.get("x_axis", "Time")
     y_axis = chart_data.get("y_axis", "Value")
     
@@ -564,11 +531,10 @@ def main():
         # Create slide options list with titles
         slide_options = []
         for i, slide in enumerate(slides):
-            # Get title from placeholders if it exists
+            # Find a title placeholder if it exists
             title = None
             for ph_idx, content in slide.get("placeholders", {}).items():
                 placeholder_info = None
-                # Find the placeholder info
                 for layout in st.session_state.layout_info:
                     if layout['layout_name'] == slide.get("layout_name", ""):
                         for ph in layout['placeholders']:
@@ -582,10 +548,10 @@ def main():
                         title = content
                     break
             
-            option = f"Slide {i+1}"
+            label = f"Slide {i+1}"
             if title:
-                option += f" - {title}"
-            slide_options.append(option)
+                label += f" - {title}"
+            slide_options.append(label)
 
         selected_slide_label = st.selectbox(
             "Choose a slide:",
@@ -600,7 +566,7 @@ def main():
         selected_slide = slides[selected_slide_index]
         placeholders = selected_slide.get("placeholders", {})
 
-        # Let users edit text or bullet points
+        # Let user edit text/bullet placeholders
         for ph_idx, content in placeholders.items():
             placeholder_info = None
             for layout in st.session_state.layout_info:
@@ -614,7 +580,6 @@ def main():
 
             ph_name = placeholder_info['placeholder_name']
             
-            # Simplify display names and labels
             if "title" in ph_name.lower():
                 display_name = "Title"
                 edit_label = "Edit title"
@@ -624,7 +589,7 @@ def main():
 
             st.markdown(f"**{display_name}**")
 
-            # Chart placeholders or images are not edited directly
+            # If it's a dict for chart/image, we skip editing
             if isinstance(content, dict):
                 if "chart_type" in content:
                     st.info("Chart placeholders are not editable via this interface.")
@@ -632,13 +597,13 @@ def main():
                 if "image_key" in content:
                     img_key = content["image_key"]
                     if img_key in uploaded_images:
-                        st.image(uploaded_images.get(img_key, b''), 
+                        st.image(uploaded_images[img_key], 
                                  caption=img_key, 
                                  use_container_width=True)
                         st.info("Image placeholders are not editable via this interface.")
                     continue
 
-                # Otherwise, we have dict with "text" and possibly "bullets"
+                # Otherwise, a dict with text/bullets
                 text_val = content.get("text", "")
                 bullet_vals = content.get("bullets", [])
             else:
@@ -646,6 +611,7 @@ def main():
                 text_val = content
                 bullet_vals = []
 
+            # Editable text
             edited_text = st.text_area(
                 edit_label,
                 value=text_val,
@@ -653,6 +619,7 @@ def main():
                 height=100
             )
 
+            # Editable bullets
             edited_bullets = []
             if bullet_vals:
                 bullets_text = "\n".join(bullet_vals)
@@ -665,7 +632,7 @@ def main():
                     line.strip() for line in edited_bullets_text.split("\n") if line.strip()
                 ]
 
-            # Update in session state
+            # Update placeholders in session state
             if bullet_vals or edited_bullets:
                 if isinstance(content, dict):
                     slides[selected_slide_index]['placeholders'][ph_idx]['text'] = edited_text
@@ -681,16 +648,18 @@ def main():
                 else:
                     slides[selected_slide_index]['placeholders'][ph_idx] = edited_text
 
-        # Update the slides JSON in the session
         st.session_state.slides_json['slides'] = slides
 
         st.markdown("## 3. Download Your Presentation")
         
-        # Create PPT from updated JSON
+        # Generate PPT from the updated JSON
         prs = Presentation(EXETER_TEMPLATE_PATH)
-        prs = create_slides_from_json(prs, st.session_state.slides_json, 
-                                      st.session_state.layout_info, 
-                                      uploaded_images)
+        prs = create_slides_from_json(
+            prs, 
+            st.session_state.slides_json, 
+            st.session_state.layout_info, 
+            uploaded_images
+        )
         ppt_buffer = BytesIO()
         prs.save(ppt_buffer)
         ppt_buffer.seek(0)
@@ -703,7 +672,6 @@ def main():
             use_container_width=True
         )
         
-        # Add space at the bottom
         st.markdown("<div style='padding-bottom: 100px'></div>", unsafe_allow_html=True)
 
 if __name__ == "__main__":
