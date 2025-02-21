@@ -258,7 +258,8 @@ def create_slides_from_json(prs, slides_json, layout_info, uploaded_images=None)
 
 def _add_donut_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a donut chart handling the exact JSON format:
+    Creates a donut chart with percentages in both legend and data labels.
+    Handles the format:
     {
         "title": "Gender Distribution",
         "data": [
@@ -267,7 +268,7 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
         ]
     }
     """
-    # Extract data from the correct structure
+    # Extract data
     title = chart_data.get("title", "Distribution")
     data_list = chart_data.get("data", [])
     
@@ -275,9 +276,16 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
     if not data_list:
         data_list = [{"category": "No Data", "value": 100}]
     
-    # Extract categories and values
-    categories = [item["category"] for item in data_list]
-    values = [item["value"] for item in data_list]
+    # Create legend labels with percentages
+    categories = []
+    values = []
+    for item in data_list:
+        category = item["category"]
+        value = item["value"]
+        # Format the category with percentage
+        category_with_percent = f"{category} ({value}%)"
+        categories.append(category_with_percent)
+        values.append(value)
 
     # Create chart data
     cd = ChartData()
@@ -298,12 +306,14 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
     chart.has_title = True
     chart.chart_title.text_frame.text = title
 
-    # Add data labels
+    # Configure data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
     data_labels = plot.data_labels
     data_labels.number_format = '0"%"'
     data_labels.position = XL_DATA_LABEL_POSITION.CENTER
+    
+    return chart
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
