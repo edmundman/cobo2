@@ -316,6 +316,7 @@ def main():
     # Add logo and top space
     col1, col2, col3 = st.columns([1, 4, 1])
     with col1:
+        st.markdown("<div style='padding-top: 20px'></div>", unsafe_allow_html=True)
         st.image("Peel-Lemon.svg", width=100)
     
     # Add space before first title
