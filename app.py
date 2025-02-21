@@ -307,7 +307,7 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a bar chart handling the exact JSON format:
+    Creates a bar chart handling the exact JSON format with proper data labels.
     {
         "title": "Treatment Response",
         "labels": ["Group A", "Group B", "Group C"],
@@ -331,7 +331,7 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     # Create chart data
     chart_data = CategoryChartData()
     chart_data.categories = labels
-    chart_data.add_series("Values", values)
+    chart_data.add_series(y_axis, values)
 
     # Create and configure chart
     chart = slide.shapes.add_chart(
@@ -353,12 +353,26 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
+    # Configure value axis to match data range
+    value_axis.minimum_scale = 0
+    value_axis.maximum_scale = max(values) + 10  # Add some padding
+    
     # Add data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
     data_labels = plot.data_labels
     data_labels.number_format = '0"%"'
     data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+    data_labels.font.size = Inches(0.1)  # Adjust size for better visibility
+    
+    # Make sure data labels are showing
+    for series in plot.series:
+        series.has_data_labels = True
+        series_data_labels = series.data_labels
+        series_data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+        series_data_labels.number_format = '0"%"'
+        
+    return chart
 
 def _add_trend_line_chart(slide, left, top, width, height, chart_data):
     """
