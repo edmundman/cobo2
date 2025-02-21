@@ -14,7 +14,7 @@ You will receive the PDF as a base64-encoded document. Please:
 
 Important Guidelines:
 - Limit bullet point slides to one or two per presentation for a narrative and engaging tone
-- Make titles short and concise
+- Make titles short and concise even on academic settings , as we dont have a lot of space on that page
 - Aim for at least 12 slides minimum (unless it's a tiny PDF)
 - Include narrative-style introduction and conclusion slides with extended paragraphs
 - At simplification score of 10, content should be very simple and accessible
