@@ -307,7 +307,7 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a bar chart with rotated category labels to prevent overlapping.
+    Creates a bar chart with improved label handling.
     """
     # Extract data with defaults
     labels = chart_data.get("labels", [])
@@ -316,73 +316,55 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     x_axis = chart_data.get("x_axis", "Categories")
     y_axis = chart_data.get("y_axis", "Values")
     
-    # Validate data
-    if not labels or not values:
-        labels = ["No Data"]
-        values = [0]
-    
     # Create chart data
     chart_data = CategoryChartData()
     chart_data.categories = labels
     chart_data.add_series(y_axis, values)
 
-    # Create and configure chart
+    # Create chart
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.COLUMN_CLUSTERED,
         left, top, width, height,
         chart_data
     ).chart
 
-    # Set chart title
+    # Chart title
     chart.has_title = True
     chart.chart_title.text_frame.text = title
 
     # Configure axes
-    value_axis = chart.value_axis
     category_axis = chart.category_axis
+    value_axis = chart.value_axis
     
+    # Set axis titles
     value_axis.has_title = True
     value_axis.axis_title.text_frame.text = y_axis
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Configure value axis
-    value_axis.minimum_scale = 0
-    max_value = max(values) if values else 0
-    value_axis.maximum_scale = max_value + (max_value * 0.2)
-    
-    # Configure category axis labels to prevent overlap
-    category_axis.tick_labels.offset = 100  # Add some spacing between labels and axis
-    if any(len(str(label)) > 8 for label in labels):  # If any label is long
-        category_axis.tick_labels.rotation = -45  # Rotate labels 45 degrees
-    
-    # Enable data labels at plot level
+    # Rotate category labels and adjust position
+    tick_labels = category_axis.tick_labels
+    tick_labels.number_format = "0"
+    tick_labels.offset = 100
+    tick_labels.rotation = -30  # Explicit rotation
+
+    # Configure data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
     
-    # Configure data labels for each series and point
     for series in plot.series:
         series.has_data_labels = True
-        points = series.points
-        
-        for i, point in enumerate(points):
+        for point in series.points:
             point.data_label.show_value = True
             point.data_label.number_format = '0"%"'
             point.data_label.font.bold = True
             point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
-    
+
     return chart
-    
+
 def _add_trend_line_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a trend line chart handling the exact JSON format:
-    {
-        "title": "Monthly Progress",
-        "dates": ["Jan", "Feb", "Mar", "Apr"],
-        "values": [10, 20, 15, 25],
-        "x_axis": "Month",
-        "y_axis": "Progress Score"
-    }
+    Creates a line chart with improved label handling.
     """
     # Extract data with defaults
     dates = chart_data.get("dates", [])
@@ -391,45 +373,57 @@ def _add_trend_line_chart(slide, left, top, width, height, chart_data):
     x_axis = chart_data.get("x_axis", "Time")
     y_axis = chart_data.get("y_axis", "Value")
     
-    # Validate data
-    if not dates or not values:
-        dates = ["No Data"]
-        values = [0]
-    
     # Create chart data
     chart_data = CategoryChartData()
     chart_data.categories = dates
     chart_data.add_series(y_axis, values)
 
-    # Create and configure chart
+    # Create chart
     chart = slide.shapes.add_chart(
         XL_CHART_TYPE.LINE_MARKERS,
         left, top, width, height,
         chart_data
     ).chart
 
-    # Set chart title
+    # Chart title
     chart.has_title = True
     chart.chart_title.text_frame.text = title
 
     # Configure axes
-    value_axis = chart.value_axis
     category_axis = chart.category_axis
+    value_axis = chart.value_axis
     
+    # Set axis titles
     value_axis.has_title = True
     value_axis.axis_title.text_frame.text = y_axis
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Add data labels
+    # Rotate category labels and adjust position
+    tick_labels = category_axis.tick_labels
+    tick_labels.number_format = "0"
+    tick_labels.offset = 100
+    tick_labels.rotation = -30  # Explicit rotation
+
+    # Configure data labels
     plot = chart.plots[0]
     plot.has_data_labels = True
-    data_labels = plot.data_labels
-    data_labels.position = XL_DATA_LABEL_POSITION.ABOVE
+    
+    for series in plot.series:
+        series.has_data_labels = True
+        series.smooth = True  # Make the line smooth
+        for point in series.points:
+            point.data_label.show_value = True
+            point.data_label.number_format = '0.0'  # One decimal place for precision
+            point.data_label.font.bold = True
+            point.data_label.position = XL_DATA_LABEL_POSITION.ABOVE
 
-    # Customize line appearance
-    series = plot.series[0]
-    series.smooth = True
+    # Add gridlines for better readability
+    value_axis.has_major_gridlines = True
+    value_axis.major_gridlines.format.line.color.rgb = RGBColor(220, 220, 220)
+
+    return chart
+    
 def main():
     # Sidebar authentication
     with st.sidebar:
