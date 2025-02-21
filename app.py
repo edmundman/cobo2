@@ -17,7 +17,7 @@ from pptx.enum.chart import XL_DATA_LABEL_POSITION
 load_dotenv()
 st.set_page_config(page_title="PEEL", layout="wide")
 
-# Custom CSS for just sizing adjustments
+# Custom CSS for styling
 st.markdown("""
     <style>
     .block-container {
@@ -27,6 +27,18 @@ st.markdown("""
     div[data-testid="stFileUploader"] {
         width: 100%;
         padding: 1rem;
+    }
+    /* Custom styling for buttons */
+    .stButton > button, .stDownloadButton > button {
+        background-color: #e7fd7d !important;
+        color: #544ff0 !important;
+        font-size: 1.2em !important;
+        padding: 0.8em 1.6em !important;
+        transition: all 0.3s ease !important;
+    }
+    .stButton > button:hover, .stDownloadButton > button:hover {
+        background-color: #d9fc5c !important;
+        transform: scale(1.05);
     }
     </style>
 """, unsafe_allow_html=True)
@@ -42,7 +54,7 @@ client = anthropic.Anthropic(
 )
 MODEL_NAME = "claude-3-5-sonnet-20241022"
 
-EXETER_TEMPLATE_PATH = "exetertemplate2.pptx"
+EXETER_TEMPLATE_PATH = "exetertemplate.pptx"
 PROMPT_FILE = "prompt.txt"
 
 def load_prompt_text(prompt_path):
