@@ -25,7 +25,6 @@ Important Guidelines:
 Chart Types Available:
 
 1. Donut Chart:
-```json
 {
   "placeholder_idx": 1,
   "chart_type": "donut",
@@ -40,7 +39,6 @@ Chart Types Available:
 ```
 
 2. Bar Chart:
-```json
 {
   "placeholder_idx": 1,
   "chart_type": "comparison_bars",
@@ -52,10 +50,8 @@ Chart Types Available:
     "y_axis": "Response Rate (%)"
   }
 }
-```
 
 3. Trend Line:
-```json
 {
   "placeholder_idx": 1,
   "chart_type": "trend_line",
@@ -70,7 +66,6 @@ Chart Types Available:
 ```
 
 For Images:
-```json
 {
   "placeholders": {
     "10": { "image_key": "your_image_filename.png" }
@@ -82,21 +77,19 @@ For Images:
 Available images that MUST all be used exactly once: {{AVAILABLE_IMAGES}}
 
 Return valid JSON in a top-level object:
-```json
 {
   "slides": [ ... ]
 }
 ```
 
 Where each slide has:
-```json
 {
   "layout_name": "<layout name>",
   "placeholders": {
     "<placeholder_idx>": "String or object describing text/bullets/images/charts"
   }
 }
-```
+
 
 Output Format:
 Use this exact structure:
