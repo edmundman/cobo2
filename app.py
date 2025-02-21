@@ -379,8 +379,9 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     
     # Additional chart formatting for better label visibility
     chart.has_legend = True
-    chart.legend.position = XL_LEGEND_POSITION.BOTTOM
+    # Instead of using XL_LEGEND_POSITION, we'll position the legend differently
     chart.legend.include_in_layout = False
+    chart.legend.position = 4  # 4 corresponds to bottom position
     
     return chart
     
