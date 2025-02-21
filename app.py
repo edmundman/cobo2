@@ -17,7 +17,7 @@ from pptx.enum.chart import XL_DATA_LABEL_POSITION
 load_dotenv()
 st.set_page_config(page_title="PEEL", layout="wide")
 
-# Custom CSS for styling
+    # Custom CSS for styling
 st.markdown("""
     <style>
     .block-container {
@@ -39,6 +39,10 @@ st.markdown("""
     .stButton > button:hover, .stDownloadButton > button:hover {
         background-color: #d9fc5c !important;
         transform: scale(1.05);
+    }
+    /* Error message styling */
+    div[data-baseweb="notification"] {
+        margin-top: 50px;
     }
     </style>
 """, unsafe_allow_html=True)
@@ -310,13 +314,16 @@ def main():
 
     # Check password
     if password != "P33L2025":
+        st.markdown("<div style='padding-top: 50px'></div>", unsafe_allow_html=True)
         st.error("Please enter the correct password to access the application.")
         return
 
+    # Add space before logo
+    st.markdown("<div style='padding-top: 10px'></div>", unsafe_allow_html=True)
+    
     # Add logo and top space
     col1, col2, col3 = st.columns([1, 4, 1])
     with col1:
-        st.markdown("<div style='padding-top: 10px'></div>", unsafe_allow_html=True)
         st.image("Peel-Lemon.svg", width=100)
     
     # Add space before first title
