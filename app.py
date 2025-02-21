@@ -426,24 +426,20 @@ def main():
 
         st.session_state.slides_json['slides'] = slides
 
-        # Generate PPTX
-        st.header("Generate Your Edited Presentation")
-        if st.button("Generate PPT"):
-            with st.spinner("Generating PowerPoint presentation..."):
-                prs = Presentation(EXETER_TEMPLATE_PATH)
-                prs = create_slides_from_json(prs, st.session_state.slides_json, st.session_state.layout_info, uploaded_images)
-                ppt_buffer = BytesIO()
-                prs.save(ppt_buffer)
-                ppt_buffer.seek(0)
-                
-                # Styled download button
-                st.download_button(
-                    "Download PPTX",
-                    data=ppt_buffer.getvalue(),
-                    file_name="my_presentation.pptx",
-                    mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
-                    use_container_width=True  # Makes the button full width
-                )
+        # Combined Generate and Download button
+        prs = Presentation(EXETER_TEMPLATE_PATH)
+        prs = create_slides_from_json(prs, st.session_state.slides_json, st.session_state.layout_info, uploaded_images)
+        ppt_buffer = BytesIO()
+        prs.save(ppt_buffer)
+        ppt_buffer.seek(0)
+        
+        st.download_button(
+            "DOWNLOAD",
+            data=ppt_buffer.getvalue(),
+            file_name="my_presentation.pptx",
+            mime="application/vnd.openxmlformats-officedocument.presentationml.presentation",
+            use_container_width=True
+        )
 
 if __name__ == "__main__":
     main()
