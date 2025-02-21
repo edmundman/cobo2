@@ -307,14 +307,7 @@ def _add_donut_chart(slide, left, top, width, height, chart_data):
 
 def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     """
-    Creates a bar chart handling the exact JSON format with proper data labels.
-    {
-        "title": "Treatment Response",
-        "labels": ["Group A", "Group B", "Group C"],
-        "values": [75, 45, 62],
-        "x_axis": "Treatment Groups",
-        "y_axis": "Response Rate (%)"
-    }
+    Creates a bar chart with explicitly enabled data labels for each point.
     """
     # Extract data with defaults
     labels = chart_data.get("labels", [])
@@ -353,27 +346,27 @@ def _add_comparison_bars_chart(slide, left, top, width, height, chart_data):
     category_axis.has_title = True
     category_axis.axis_title.text_frame.text = x_axis
 
-    # Configure value axis to match data range
+    # Configure value axis
     value_axis.minimum_scale = 0
-    value_axis.maximum_scale = max(values) + 10  # Add some padding
+    max_value = max(values) if values else 0
+    value_axis.maximum_scale = max_value + (max_value * 0.1)  # Add 10% padding
     
-    # Add data labels
+    # Enable data labels at plot level
     plot = chart.plots[0]
     plot.has_data_labels = True
-    data_labels = plot.data_labels
-    data_labels.number_format = '0"%"'
-    data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
-    data_labels.font.size = Inches(0.1)  # Adjust size for better visibility
     
-    # Make sure data labels are showing
+    # Configure data labels for each series and point
     for series in plot.series:
         series.has_data_labels = True
-        series_data_labels = series.data_labels
-        series_data_labels.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
-        series_data_labels.number_format = '0"%"'
-        
+        points = series.points
+        for point in points:
+            point.data_label.show_value = True
+            point.data_label.number_format = '0"%"'
+            point.data_label.position = XL_DATA_LABEL_POSITION.OUTSIDE_END
+            point.data_label.font.bold = True
+    
     return chart
-
+    
 def _add_trend_line_chart(slide, left, top, width, height, chart_data):
     """
     Creates a trend line chart handling the exact JSON format:
