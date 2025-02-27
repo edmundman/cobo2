@@ -505,24 +505,36 @@ def main():
             uploaded_images[img.name] = img.read()
             image_filenames.append(img.name)
 
-    if uploaded_pdf and st.button("Let's Peel"):
-        with st.spinner("Generating slides..."):
-            pdf_bytes = uploaded_pdf.read()
-            result = call_claude_for_slides(
-                pdf_bytes,
-                st.session_state.layout_info,
-                simplification_level,
-                image_filenames
-            )
-            if result:
-                st.session_state.slides_json = result
-                st.success("PowerPoint generated!")
-            else:
-                st.error("Failed to generate PowerPoint")
+    # Replace the current "Let's Peel" button code with this:
+
+    # Create two columns for the button and spinner
+    button_col, spinner_col = st.columns([3, 1])
+    
+    with button_col:
+        generate_slides = st.button("Let's Peel", use_container_width=True)
+    
+    # Create a placeholder for the spinner in the second column
+    spinner_placeholder = spinner_col.empty()
+    
+    if uploaded_pdf and generate_slides:
+        # Show spinner in the placeholder
+        with spinner_placeholder.container():
+            with st.spinner(""):
+                pdf_bytes = uploaded_pdf.read()
+                result = call_claude_for_slides(
+                    pdf_bytes,
+                    st.session_state.layout_info,
+                    simplification_level,
+                    image_filenames
+                )
+                if result:
+                    st.session_state.slides_json = result
+                    st.success("PowerPoint generated!")
+                else:
+                    st.error("Failed to generate PowerPoint")
         
         # Add space after Let's Peel button
         st.markdown("<div style='padding-bottom: 50px'></div>", unsafe_allow_html=True)
-
     if "slides_json" in st.session_state and st.session_state.slides_json:
         st.markdown("## 2. Edit your slides")
 
