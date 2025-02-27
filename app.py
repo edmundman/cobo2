@@ -521,7 +521,7 @@ def main():
                 st.error("Failed to generate PowerPoint")
         
         # Add space after Let's Peel button
-        st.markdown("<div style='padding-bottom: 30px'></div>", unsafe_allow_html=True)
+        st.markdown("<div style='padding-bottom: 50px'></div>", unsafe_allow_html=True)
 
     if "slides_json" in st.session_state and st.session_state.slides_json:
         st.markdown("## 2. Edit your slides")
